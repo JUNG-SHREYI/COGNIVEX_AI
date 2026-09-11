@@ -57,6 +57,17 @@ const SUGGESTIONS = [
   }
 ];
 
+function normalizeSources(sources) {
+  if (Array.isArray(sources)) return sources;
+  if (typeof sources !== 'string') return [];
+  try {
+    const parsed = JSON.parse(sources);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -144,7 +155,7 @@ export default function App() {
       setMessages((data.messages || []).map((m) => ({
         role: m.role,
         content: m.content,
-        sources: m.sources || []
+        sources: normalizeSources(m.sources)
       })));
     } catch (err) {
       console.error('Failed to load chat history:', err);
@@ -180,7 +191,7 @@ export default function App() {
       setMessages((cur) => [...cur, {
         role: 'assistant',
         content: response,
-        sources: res.sources || [],
+        sources: normalizeSources(res.sources),
         anomaly_score: res.anomaly_score,
         predicted_cause: res.predicted_cause
       }]);
