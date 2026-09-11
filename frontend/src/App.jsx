@@ -117,16 +117,16 @@ export default function App() {
   if (authLoading) return <div className="auth-loading">Loading Cognivex...</div>;
   if (!user) return <AuthPage onAuthenticated={setUser} />;
 
-  const loadDomains = async () => {
+  async function loadDomains() {
     try {
       const data = await getDomains();
       if (data && data.domains) setDomains(data.domains);
     } catch (err) {
       console.error('Failed to load domains:', err);
     }
-  };
+  }
 
-  const loadDomain = async (domainId) => {
+  async function loadDomain(domainId) {
     try {
       const data = await getDomainDetails(domainId);
       setDomainData(data);
@@ -136,9 +136,9 @@ export default function App() {
     } catch (err) {
       console.error(`Failed to load domain ${domainId}:`, err);
     }
-  };
+  }
 
-  const loadHistory = async () => {
+  async function loadHistory() {
     try {
       const data = await getChatHistory(sessionId);
       setMessages((data.messages || []).map((m) => ({
@@ -149,7 +149,7 @@ export default function App() {
     } catch (err) {
       console.error('Failed to load chat history:', err);
     }
-  };
+  }
 
   const sendMessage = async (value = prompt) => {
     const text = value.trim();
