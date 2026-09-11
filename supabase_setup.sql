@@ -15,6 +15,15 @@ CREATE TABLE IF NOT EXISTS "Chat_History" (
     created_at  timestamptz  NOT NULL DEFAULT now()
 );
 
+-- Repair an existing Chat_History table created with a different schema.
+ALTER TABLE "Chat_History" ADD COLUMN IF NOT EXISTS session_id text;
+ALTER TABLE "Chat_History" ADD COLUMN IF NOT EXISTS role text;
+ALTER TABLE "Chat_History" ADD COLUMN IF NOT EXISTS content text;
+ALTER TABLE "Chat_History" ADD COLUMN IF NOT EXISTS sources text DEFAULT '[]';
+ALTER TABLE "Chat_History" ADD COLUMN IF NOT EXISTS web_context text DEFAULT '';
+ALTER TABLE "Chat_History" ADD COLUMN IF NOT EXISTS provider text DEFAULT 'local';
+ALTER TABLE "Chat_History" ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
 -- Index for fast session lookups
 CREATE INDEX IF NOT EXISTS idx_chat_history_session_id
     ON "Chat_History" (session_id, created_at ASC);

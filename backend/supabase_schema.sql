@@ -10,6 +10,15 @@ create table if not exists public."Chat_History" (
   created_at timestamptz not null default now()
 );
 
+-- Repair an existing Chat_History table created with a different schema.
+alter table public."Chat_History" add column if not exists session_id text;
+alter table public."Chat_History" add column if not exists role text;
+alter table public."Chat_History" add column if not exists content text;
+alter table public."Chat_History" add column if not exists sources text default '[]';
+alter table public."Chat_History" add column if not exists web_context text default '';
+alter table public."Chat_History" add column if not exists provider text default 'local';
+alter table public."Chat_History" add column if not exists created_at timestamptz default now();
+
 create index if not exists chat_history_session_created_idx
   on public."Chat_History" (session_id, created_at);
 
