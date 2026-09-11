@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import Navbar from './components/Navbar';
 import CustomDomainModal from './components/CustomDomainModal';
+import AuthPage from './components/AuthPage';
+import { supabase } from './supabaseClient';
 import { clearChatHistory, getChatHistory, getDomains, getDomainDetails, promptCognivex } from './api';
 import {
   ArrowUp, Bot, ChevronDown, History, Sparkles, Trash2, User,
@@ -56,6 +58,8 @@ const SUGGESTIONS = [
 ];
 
 export default function App() {
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [domains, setDomains] = useState([]);
   const [currentTab, setCurrentTab] = useState('village');
   const [domainData, setDomainData] = useState(null);
@@ -65,19 +69,33 @@ export default function App() {
   const [isSending, setIsSending] = useState(false);
   const [isCustomDomainOpen, setIsCustomDomainOpen] = useState(false);
   const textareaRef = useRef(null);
-  const [sessionId] = useState(() => {
-    const stored = window.localStorage.getItem('cognivex-session-id');
-    const next = stored || crypto.randomUUID();
-    window.localStorage.setItem('cognivex-session-id', next);
-    return next;
-  });
+  const sessionId = user?.id || 'anonymous';
   const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    if (!supabase) {
+      setAuthLoading(false);
+      return undefined;
+    }
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user || null);
+      setAuthLoading(false);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+      setAuthLoading(false);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
 
   // Initialize domains
   useEffect(() => {
     loadDomains();
-    loadHistory();
   }, []);
+
+  useEffect(() => {
+    if (user) loadHistory();
+  }, [user]);
 
   // When tab changes, load domain data
   useEffect(() => {
@@ -95,6 +113,9 @@ export default function App() {
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 180)}px`;
     }
   }, [prompt]);
+
+  if (authLoading) return <div className="auth-loading">Loading Cognivex...</div>;
+  if (!user) return <AuthPage onAuthenticated={setUser} />;
 
   const loadDomains = async () => {
     try {
@@ -186,6 +207,11 @@ export default function App() {
     setMessages([]);
   };
 
+  const handleSignOut = async () => {
+    await supabase?.auth.signOut();
+    setMessages([]);
+  };
+
   const handleDomainCreated = (newDomain) => {
     setDomains((prev) => [...prev, {
       id: newDomain.id,
@@ -206,6 +232,8 @@ export default function App() {
         onSelectTab={setCurrentTab}
         domains={domains}
         onOpenCustomModal={() => setIsCustomDomainOpen(true)}
+        userEmail={user.email}
+        onSignOut={handleSignOut}
       />
 
       <main className="chat-shell">

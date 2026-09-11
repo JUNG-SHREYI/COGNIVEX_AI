@@ -236,6 +236,57 @@ code, pre, .font-mono {
   flex-direction: column;
 }
 
+.auth-loading {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+}
+
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background-image: radial-gradient(circle at 20% 10%, rgba(34, 197, 94, 0.1), transparent 36%), radial-gradient(circle at 85% 85%, rgba(14, 165, 233, 0.12), transparent 38%);
+}
+
+.auth-panel {
+  width: min(440px, 100%);
+  padding: 34px;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 22px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
+}
+
+.auth-brand, .auth-brand > div, .auth-input, .auth-submit, .account-button {
+  display: flex;
+  align-items: center;
+}
+
+.auth-brand { gap: 12px; margin-bottom: 40px; }
+.auth-brand strong { display: block; color: #f8fafc; letter-spacing: 0.04em; font-size: 0.92rem; }
+.auth-brand span { display: block; color: #64748b; font-size: 0.72rem; margin-top: 3px; }
+.auth-mark { width: 40px; height: 40px; justify-content: center; color: #d9f99d; background: linear-gradient(135deg, #164e63, #365314); border-radius: 12px; }
+.auth-copy { margin-bottom: 24px; }
+.auth-kicker { color: #a3e635; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; }
+.auth-copy h1 { color: #f8fafc; font-size: 2rem; letter-spacing: -0.04em; margin-bottom: 8px; }
+.auth-copy > p:last-child { color: #94a3b8; line-height: 1.5; font-size: 0.88rem; }
+.auth-form { display: flex; flex-direction: column; gap: 16px; }
+.auth-form label > span { display: block; color: #cbd5e1; font-size: 0.76rem; margin-bottom: 7px; }
+.auth-input { gap: 9px; padding: 0 12px; color: #64748b; background: rgba(2, 6, 23, 0.62); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; }
+.auth-input:focus-within { border-color: rgba(163, 230, 53, 0.7); box-shadow: 0 0 0 3px rgba(163, 230, 53, 0.08); }
+.auth-input input { width: 100%; min-width: 0; padding: 12px 0; color: #f8fafc; background: transparent; border: 0; outline: 0; font: inherit; font-size: 0.88rem; }
+.auth-input button { display: grid; place-items: center; color: #64748b; background: transparent; border: 0; cursor: pointer; }
+.auth-message { color: #fda4af; font-size: 0.78rem; line-height: 1.5; }
+.auth-submit { justify-content: center; gap: 8px; padding: 12px 16px; color: #0f172a; background: #bef264; border: 0; border-radius: 10px; font: inherit; font-weight: 700; cursor: pointer; }
+.auth-submit:disabled { opacity: 0.6; cursor: wait; }
+.auth-switch { width: 100%; margin-top: 20px; color: #7dd3fc; background: transparent; border: 0; font: inherit; font-size: 0.78rem; cursor: pointer; }
+.account-button { gap: 8px; padding: 6px 8px; color: #94a3b8; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 9px; cursor: pointer; }
+.account-button span { display: grid; place-items: center; width: 22px; height: 22px; color: #0f172a; background: #bef264; border-radius: 7px; font-size: 0.72rem; font-weight: 800; }
+
 .chat-app > header {
   margin: 14px 24px 0;
   border: 0;

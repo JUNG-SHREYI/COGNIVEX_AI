@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Cpu, PlusCircle,
+  Cpu, LogOut, PlusCircle,
   Wheat, GraduationCap, Factory, HeartPulse, Building2, Layers
 } from 'lucide-react';
 
@@ -8,7 +8,9 @@ export default function Navbar({
   currentTab, 
   onSelectTab, 
   domains, 
-  onOpenCustomModal
+  onOpenCustomModal,
+  userEmail,
+  onSignOut
 }) {
   const getDomainIcon = (iconName) => {
     switch (iconName) {
@@ -95,6 +97,11 @@ export default function Navbar({
           >
             <PlusCircle size={14} color="#06b6d4" />
             + Custom Domain
+          </button>
+
+          <button className="account-button" onClick={onSignOut} title={`Sign out ${userEmail}`}>
+            <span>{userEmail?.slice(0, 1).toUpperCase()}</span>
+            <LogOut size={14} />
           </button>
         </nav>
 
