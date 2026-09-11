@@ -1,5 +1,5 @@
 -- Run this in Supabase SQL Editor.
-create table if not exists public.chat_messages (
+create table if not exists public."Chat_History" (
   id uuid primary key,
   session_id text not null,
   role text not null check (role in ('user', 'assistant')),
@@ -10,8 +10,8 @@ create table if not exists public.chat_messages (
   created_at timestamptz not null default now()
 );
 
-create index if not exists chat_messages_session_created_idx
-  on public.chat_messages (session_id, created_at);
+create index if not exists chat_history_session_created_idx
+  on public."Chat_History" (session_id, created_at);
 
 -- The backend uses the service-role key, so the table stays private to the API.
 -- Do not expose SUPABASE_SERVICE_ROLE_KEY in the frontend.

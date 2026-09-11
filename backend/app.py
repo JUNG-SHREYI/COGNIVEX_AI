@@ -19,7 +19,15 @@ try:
     from dotenv import load_dotenv
     load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 except ImportError:
-    pass  # python-dotenv not installed; rely on OS environment variables
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if os.path.exists(env_path):
+        with open(env_path, encoding="utf-8") as env_file:
+            for raw_line in env_file:
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                name, value = line.split("=", 1)
+                os.environ.setdefault(name.strip(), value.strip().strip('"').strip("'"))
 
 
 from cognivex_ai.engine import CognivexEngine
