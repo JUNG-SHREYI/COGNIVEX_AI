@@ -235,26 +235,17 @@ DOMAIN_KNOWLEDGE: Dict[str, Dict[str, Any]] = {
 GENERAL_KNOWLEDGE = {
     "cognivex|how|what|who|architecture|model|neural|transformer|ai|explain": {
         "title": "🧠 About Cognivex AI",
-        "response": """Cognivex AI is a proprietary **Multi-Task Causal Transformer** — a neural language and intelligence model built from scratch with PyTorch.
+                "response": """Cognivex AI is a domain-aware assistant designed to help you understand operational questions and make practical decisions.
 
-**Architecture:**
-- **{params} parameters** across **{layers} transformer layers** with **{heads} attention heads**
-- **5 Specialized Output Heads:**
-  1. 🔤 **Autoregressive Language Head** — generates text and explanations
-  2. ⚠️ **Anomaly Detection Head** — outputs breach probability (0–100%)
-  3. 🔍 **Causal Attribution Head** — ranks root causes across 16 factor classes
-  4. 📈 **Prognosis Head** — estimates time-to-failure and risk trajectory
-  5. 🛠️ **Prescriptive Policy Head** — scores and ranks 8 intervention strategies
+It combines conversational answers with domain context, internet search, causal reasoning, forecasts, and recommended next steps. For incidents, it organizes its response around five questions:
 
-**What makes Cognivex different from a chatbot:**
-Cognivex doesn't just answer questions — it produces the **5-Pillar Decision Framework**:
-1. What happened? (Descriptive)
-2. Why did it happen? (Diagnostic/Causal)
-3. What will happen next? (Predictive)
-4. What should we do? (Prescriptive)
-5. Why this recommendation? (Explainable AI)
+1. What happened?
+2. Why did it happen?
+3. What may happen next?
+4. What should we do?
+5. Why is that recommendation useful?
 
-It runs **entirely on-device** (CPU/GPU) with no external API key required, while supporting optional OpenAI/Ollama integration for extended language capability."""
+You can ask about agriculture, education, manufacturing, healthcare, smart cities, or a custom domain. Responses can use the local Cognivex engine or an optional OpenAI/Ollama provider."""
     }
 }
 

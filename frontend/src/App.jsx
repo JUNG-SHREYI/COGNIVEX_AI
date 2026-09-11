@@ -6,7 +6,7 @@ import { clearChatHistory, getChatHistory, getDomains, getDomainDetails, promptC
 import {
   ArrowUp, Bot, ChevronDown, History, Sparkles, Trash2, User,
   Wheat, GraduationCap, Factory, HeartPulse, Building2, Zap,
-  Brain, Shield, Activity, Layers
+  Brain, Shield, Layers
 } from 'lucide-react';
 
 // ─── Suggested prompt cards for the welcome screen ───────────────────────────
@@ -287,17 +287,6 @@ export default function App() {
                       </ReactMarkdown>
                     ) : (
                       message.content
-                    )}
-
-                    {/* Neural insights badge for assistant messages */}
-                    {message.role === 'assistant' && message.anomaly_score !== undefined && (
-                      <div className="neural-badge">
-                        <Activity size={11} />
-                        Anomaly: {message.anomaly_score}%
-                        {message.predicted_cause && (
-                          <><span style={{ opacity: 0.4 }}>•</span>{message.predicted_cause}</>
-                        )}
-                      </div>
                     )}
 
                     {/* Source links */}
