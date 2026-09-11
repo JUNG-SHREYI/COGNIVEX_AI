@@ -75,6 +75,15 @@ export async function clearChatHistory(sessionId) {
   return res.json();
 }
 
+export async function getAdminOverview(accessToken) {
+  const res = await fetch(`${API_BASE}/admin/overview`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.detail || 'Admin access denied');
+  return data;
+}
+
 export async function trainCognivex(domain, samples, epochs = 5) {
   const res = await fetch(`${API_BASE}/cognivex/train`, {
     method: 'POST',

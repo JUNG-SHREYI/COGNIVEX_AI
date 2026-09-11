@@ -3,8 +3,9 @@ import ReactMarkdown from 'react-markdown';
 import Navbar from './components/Navbar';
 import CustomDomainModal from './components/CustomDomainModal';
 import AuthPage from './components/AuthPage';
+import AdminPage from './components/AdminPage';
 import { supabase } from './supabaseClient';
-import { clearChatHistory, getChatHistory, getDomains, getDomainDetails, promptCognivex } from './api';
+import { clearChatHistory, getAdminOverview, getChatHistory, getDomains, getDomainDetails, promptCognivex } from './api';
 import {
   ArrowUp, Bot, ChevronDown, History, Sparkles, Trash2, User,
   Wheat, GraduationCap, Factory, HeartPulse, Building2, Zap,
@@ -70,7 +71,10 @@ function normalizeSources(sources) {
 
 export default function App() {
   const [user, setUser] = useState(null);
+  const [accessToken, setAccessToken] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [adminOverview, setAdminOverview] = useState(null);
+  const [adminError, setAdminError] = useState('');
   const [domains, setDomains] = useState([]);
   const [currentTab, setCurrentTab] = useState('village');
   const [domainData, setDomainData] = useState(null);
@@ -90,10 +94,12 @@ export default function App() {
     }
     supabase.auth.getSession().then(({ data }) => {
       setUser(data.session?.user || null);
+      setAccessToken(data.session?.access_token || null);
       setAuthLoading(false);
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user || null);
+      setAccessToken(session?.access_token || null);
       setAuthLoading(false);
     });
     return () => listener.subscription.unsubscribe();
@@ -127,6 +133,17 @@ export default function App() {
 
   if (authLoading) return <div className="auth-loading">Loading Cognivex...</div>;
   if (!user) return <AuthPage onAuthenticated={setUser} />;
+
+  const openAdmin = async () => {
+    try {
+      setAdminError('');
+      setAdminOverview(await getAdminOverview(accessToken));
+    } catch (error) {
+      setAdminError(error.message);
+    }
+  };
+
+  if (adminOverview) return <AdminPage overview={adminOverview} onBack={() => setAdminOverview(null)} />;
 
   async function loadDomains() {
     try {
@@ -245,6 +262,8 @@ export default function App() {
         onOpenCustomModal={() => setIsCustomDomainOpen(true)}
         userEmail={user.email}
         onSignOut={handleSignOut}
+        onOpenAdmin={openAdmin}
+        adminError={adminError}
       />
 
       <main className="chat-shell">

@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Cpu, LogOut, PlusCircle,
+  Cpu, LogOut, PlusCircle, ShieldCheck,
   Wheat, GraduationCap, Factory, HeartPulse, Building2, Layers
 } from 'lucide-react';
 
@@ -10,7 +10,9 @@ export default function Navbar({
   domains, 
   onOpenCustomModal,
   userEmail,
-  onSignOut
+  onSignOut,
+  onOpenAdmin,
+  adminError
 }) {
   const getDomainIcon = (iconName) => {
     switch (iconName) {
@@ -103,6 +105,10 @@ export default function Navbar({
             <span>{userEmail?.slice(0, 1).toUpperCase()}</span>
             <LogOut size={14} />
           </button>
+          <button className="admin-button" onClick={onOpenAdmin} title="Open protected admin dashboard">
+            <ShieldCheck size={14} /> Admin
+          </button>
+          {adminError && <span className="admin-error" title={adminError}>Admin unavailable</span>}
         </nav>
 
       </div>

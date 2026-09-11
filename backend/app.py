@@ -5,9 +5,12 @@ Orchestrates Perception, Understanding, Knowledge, Cognivex Neural Engine, Decis
 
 import os
 import sys
+import json
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 import uvicorn
 from typing import Dict, Any, List, Optional
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -95,6 +98,53 @@ class CustomDomainRequest(BaseModel):
     sensors: List[Dict[str, Any]]
     sample_incident: Dict[str, Any]
 
+
+def _require_admin(authorization: Optional[str]) -> Dict[str, Any]:
+    """Validate the Supabase session and enforce the server-side admin allowlist."""
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required")
+    token = authorization.split(" ", 1)[1].strip()
+    api_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="Supabase server credentials are not configured")
+    url = os.getenv("SUPABASE_URL", "https://tgqjilgdnyzktppkybmu.supabase.co").rstrip("/")
+    request = Request(
+        f"{url}/auth/v1/user",
+        headers={"apikey": api_key, "Authorization": f"Bearer {token}"},
+    )
+    try:
+        with urlopen(request, timeout=10) as response:
+            user = json.loads(response.read().decode("utf-8"))
+    except (HTTPError, URLError, TimeoutError, OSError, ValueError):
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+
+    allowed = {
+        email.strip().lower()
+        for email in os.getenv("ADMIN_EMAILS", "").split(",")
+        if email.strip()
+    }
+    if not user.get("email") or user["email"].lower() not in allowed:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
+
+
+def _admin_history(limit: int = 200) -> List[Dict[str, Any]]:
+    """Read history through the server-only Supabase key for authorized admins."""
+    api_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="SUPABASE_SERVICE_ROLE_KEY is required for admin data")
+    url = os.getenv("SUPABASE_URL", "https://tgqjilgdnyzktppkybmu.supabase.co").rstrip("/")
+    table = os.getenv("SUPABASE_CHAT_TABLE", "Chat_History")
+    request = Request(
+        f"{url}/rest/v1/{table}?select=id,session_id,role,content,provider,created_at&order=created_at.desc&limit={limit}",
+        headers={"apikey": api_key, "Authorization": f"Bearer {api_key}"},
+    )
+    try:
+        with urlopen(request, timeout=10) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except (HTTPError, URLError, TimeoutError, OSError, ValueError):
+        raise HTTPException(status_code=502, detail="Unable to read admin data from Supabase")
+
 # Routes
 @app.get("/api/health")
 def get_health():
@@ -108,6 +158,18 @@ def get_health():
 @app.get("/api/domains")
 def list_domains():
     return {"domains": domain_mgr.get_all_domains_summary()}
+
+
+@app.get("/api/admin/overview")
+def admin_overview(authorization: Optional[str] = Header(default=None)):
+    user = _require_admin(authorization)
+    history = _admin_history()
+    return {
+        "admin_email": user["email"],
+        "domains": domain_mgr.get_all_domains_summary(),
+        "chat_messages": history,
+        "chat_message_count": len(history),
+    }
 
 @app.get("/api/domain/{domain_id}")
 def get_domain_details(domain_id: str):
