@@ -5,9 +5,10 @@ import CustomDomainModal from './components/CustomDomainModal';
 import AuthPage from './components/AuthPage';
 import AdminPage from './components/AdminPage';
 import { supabase } from './supabaseClient';
-import { clearChatHistory, getAdminOverview, getChatHistory, getDomains, getDomainDetails, promptCognivex } from './api';
+import { clearChatHistory, getAdminOverview, getChatHistory, getDomains, getDomainDetails, getIntegrationsStatus, promptCognivex } from './api';
 import {
-  ArrowUp, Bot, ChevronDown, History, Sparkles, Trash2, User,
+  AlertCircle, ArrowUp, Bot, CheckCircle2, ChevronDown, Copy, Database, ExternalLink,
+  History, Sparkles, Trash2, User,
   Wheat, GraduationCap, Factory, HeartPulse, Building2, Zap,
   Brain, Shield, Layers
 } from 'lucide-react';
@@ -83,6 +84,9 @@ export default function App() {
   const [prompt, setPrompt] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isCustomDomainOpen, setIsCustomDomainOpen] = useState(false);
+  const [integrationsStatus, setIntegrationsStatus] = useState(null);
+  const [showSqlBanner, setShowSqlBanner] = useState(false);
+  const [copiedSql, setCopiedSql] = useState(false);
   const textareaRef = useRef(null);
   const sessionId = user?.id || 'anonymous';
   const messagesEndRef = useRef(null);
@@ -105,10 +109,23 @@ export default function App() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  // Initialize domains
+  // Initialize domains and integration status
   useEffect(() => {
     loadDomains();
+    checkIntegrations();
   }, []);
+
+  async function checkIntegrations() {
+    try {
+      const data = await getIntegrationsStatus();
+      setIntegrationsStatus(data);
+      if (data?.supabase?.status === 'schema_incomplete') {
+        setShowSqlBanner(true);
+      }
+    } catch (err) {
+      console.error('Failed to load integrations status:', err);
+    }
+  }
 
   useEffect(() => {
     if (user) loadHistory();
@@ -210,8 +227,14 @@ export default function App() {
         content: response,
         sources: normalizeSources(res.sources),
         anomaly_score: res.anomaly_score,
-        predicted_cause: res.predicted_cause
+        predicted_cause: res.predicted_cause,
+        provider_used: res.provider_used,
+        provider_status: res.provider_status,
+        provider_model: res.provider_model,
+        provider_notice: res.provider_notice
       }]);
+      // Refresh integration status
+      checkIntegrations();
     } catch {
       setMessages((cur) => [...cur, {
         role: 'assistant',
@@ -267,15 +290,105 @@ export default function App() {
       />
 
       <main className="chat-shell">
-        {/* Toolbar */}
+        {/* Toolbar with Integration Status */}
         <div className="chat-toolbar">
-          <span><History size={16} /> Chat history</span>
+          <div className="integration-pills">
+            <span><History size={15} /> Chat history</span>
+
+            {/* Supabase Status */}
+            {integrationsStatus?.supabase && (
+              integrationsStatus.supabase.status === 'connected' ? (
+                <span className="status-pill online" title="Supabase Chat_History connected">
+                  <span className="dot" /> Supabase DB Connected
+                </span>
+              ) : (
+                <button
+                  className="status-pill warning"
+                  onClick={() => setShowSqlBanner((prev) => !prev)}
+                  title={integrationsStatus.supabase.message}
+                >
+                  <span className="dot" /> Supabase: Table Setup Needed
+                </button>
+              )
+            )}
+
+            {/* OpenAI Status */}
+            {integrationsStatus?.openai && (
+              integrationsStatus.openai.status === 'online' ? (
+                <span className="status-pill online" title={`Connected to OpenAI ${integrationsStatus.openai.model}`}>
+                  <span className="dot" /> OpenAI ({integrationsStatus.openai.model})
+                </span>
+              ) : integrationsStatus.openai.status === 'quota_exhausted' ? (
+                <a
+                  href="https://platform.openai.com/usage"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="status-pill warning"
+                  title="OpenAI quota exhausted. Click to check usage and billing."
+                >
+                  <span className="dot" /> OpenAI: Quota Reached (Check Usage)
+                  <ExternalLink size={11} />
+                </a>
+              ) : (
+                <a
+                  href="https://platform.openai.com/usage"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="status-pill error"
+                  title={integrationsStatus.openai.message}
+                >
+                  <span className="dot" /> OpenAI: {integrationsStatus.openai.status}
+                </a>
+              )
+            )}
+          </div>
+
           {messages.length > 0 && (
             <button className="clear-history-button" onClick={handleClearHistory} title="Clear chat history">
               <Trash2 size={15} /> Clear
             </button>
           )}
         </div>
+
+        {/* Supabase SQL Schema Setup Banner */}
+        {showSqlBanner && integrationsStatus?.supabase?.status === 'schema_incomplete' && (
+          <div className="sql-banner">
+            <h3><AlertCircle size={17} /> Supabase Database Setup Required</h3>
+            <p>
+              Your Supabase <code>Chat_History</code> table needs the required columns to save chat messages.
+              Copy and execute this query in your{' '}
+              <a
+                href="https://supabase.com/dashboard/project/tgqjilgdnyzktppkybmu/sql/new"
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: '#38bdf8', textDecoration: 'underline' }}
+              >
+                Supabase Dashboard &rarr; SQL Editor
+              </a>:
+            </p>
+            <pre>{integrationsStatus.supabase.sql_repair}</pre>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '6px' }}>
+              <button
+                className="sql-copy-btn"
+                onClick={() => {
+                  navigator.clipboard.writeText(integrationsStatus.supabase.sql_repair);
+                  setCopiedSql(true);
+                  setTimeout(() => setCopiedSql(false), 2500);
+                }}
+              >
+                {copiedSql ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+                {copiedSql ? 'Copied SQL!' : 'Copy SQL to Clipboard'}
+              </button>
+              <button
+                className="clear-history-button"
+                style={{ fontSize: '0.76rem' }}
+                onClick={() => setShowSqlBanner(false)}
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Message list or Welcome screen */}
         <section className="chat-content" aria-label="Cognivex conversation">
@@ -320,6 +433,15 @@ export default function App() {
                     {message.role === 'user' ? <User size={15} /> : <Bot size={16} />}
                   </div>
                   <div className="message-copy">
+                    {/* Provider badge */}
+                    {message.role === 'assistant' && (
+                      <div className={`provider-badge ${message.provider_used === 'openai' ? 'openai' : ''}`}>
+                        {message.provider_used === 'openai'
+                          ? `🤖 OpenAI ${message.provider_model || 'gpt-4o-mini'}`
+                          : '🧠 Cognivex Causal Engine'}
+                      </div>
+                    )}
+
                     {message.role === 'assistant' ? (
                       <ReactMarkdown
                         components={{
@@ -345,6 +467,31 @@ export default function App() {
                       </ReactMarkdown>
                     ) : (
                       message.content
+                    )}
+
+                    {/* Provider notice banner (e.g. OpenAI quota exhausted) */}
+                    {message.role === 'assistant' && message.provider_notice && (
+                      <div className="provider-notice-banner">
+                        <div className="provider-notice-header">
+                          <Zap size={14} />
+                          <span>
+                            {message.provider_notice.type === 'quota_exhausted'
+                              ? 'OpenAI Quota Limit Notice'
+                              : 'OpenAI Provider Notice'}
+                          </span>
+                        </div>
+                        <p>{message.provider_notice.message}</p>
+                        {message.provider_notice.usage_url && (
+                          <a
+                            href={message.provider_notice.usage_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="provider-notice-link"
+                          >
+                            Check OpenAI Usage & Billing Limits ({message.provider_notice.usage_url}) &rarr;
+                          </a>
+                        )}
+                      </div>
                     )}
 
                     {/* Source links */}

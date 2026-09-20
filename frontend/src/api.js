@@ -101,3 +101,9 @@ export async function createCustomDomain(payload) {
   });
   return res.json();
 }
+
+export async function getIntegrationsStatus() {
+  const res = await fetch(`${API_BASE}/integrations/status`);
+  return res.json();
+}
+

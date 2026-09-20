@@ -22,6 +22,7 @@ from urllib.request import Request, urlopen
 _LOCAL_FILE = Path(__file__).resolve().parent.parent / "data" / "chat_history.json"
 _LOCK = threading.Lock()
 _DEFAULT_SUPABASE_URL = "https://tgqjilgdnyzktppkybmu.supabase.co"
+_LAST_SUPABASE_ERROR: Optional[str] = None
 
 
 def _table_name() -> str:
@@ -40,7 +41,108 @@ def _supabase_configured() -> bool:
     return bool(_get_api_key())
 
 
+def get_last_supabase_error() -> Optional[str]:
+    return _LAST_SUPABASE_ERROR
+
+
+def test_supabase_connection() -> dict:
+    """Test connectivity to Supabase and verify Chat_History table schema."""
+    global _LAST_SUPABASE_ERROR
+    key = _get_api_key()
+    url = os.getenv("SUPABASE_URL", _DEFAULT_SUPABASE_URL).rstrip("/")
+    table = _table_name()
+
+    if not key:
+        return {
+            "status": "unconfigured",
+            "url": url,
+            "table": table,
+            "message": "Neither SUPABASE_SERVICE_ROLE_KEY nor SUPABASE_ANON_KEY is configured in .env",
+        }
+
+    expected_columns = ["id", "session_id", "role", "content", "sources", "web_context", "provider", "created_at"]
+    missing_columns = []
+
+    # Test checking columns
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+    }
+
+    for col in expected_columns:
+        req = Request(f"{url}/rest/v1/{table}?select={col}&limit=1", headers=headers)
+        try:
+            with urlopen(req, timeout=8):
+                pass
+        except HTTPError as err:
+            if err.code == 400:
+                missing_columns.append(col)
+            elif err.code == 401 or err.code == 403:
+                _LAST_SUPABASE_ERROR = f"Authentication error ({err.code}): check API key or RLS permissions."
+                return {
+                    "status": "auth_error",
+                    "code": err.code,
+                    "url": url,
+                    "table": table,
+                    "message": _LAST_SUPABASE_ERROR,
+                }
+            elif err.code == 404:
+                _LAST_SUPABASE_ERROR = f"Table '{table}' not found in Supabase."
+                return {
+                    "status": "table_not_found",
+                    "url": url,
+                    "table": table,
+                    "message": _LAST_SUPABASE_ERROR,
+                }
+            else:
+                _LAST_SUPABASE_ERROR = f"HTTP {err.code}: {err.reason}"
+                return {
+                    "status": "error",
+                    "code": err.code,
+                    "url": url,
+                    "table": table,
+                    "message": _LAST_SUPABASE_ERROR,
+                }
+        except Exception as exc:
+            _LAST_SUPABASE_ERROR = str(exc)
+            return {
+                "status": "network_error",
+                "url": url,
+                "table": table,
+                "message": str(exc),
+            }
+
+    if missing_columns:
+        _LAST_SUPABASE_ERROR = f"Table '{table}' is missing columns: {', '.join(missing_columns)}. Run ALTER TABLE in Supabase SQL Editor."
+        return {
+            "status": "schema_incomplete",
+            "url": url,
+            "table": table,
+            "missing_columns": missing_columns,
+            "message": _LAST_SUPABASE_ERROR,
+            "sql_repair": (
+                'ALTER TABLE "' + table + '" ADD COLUMN IF NOT EXISTS session_id text;\n'
+                'ALTER TABLE "' + table + '" ADD COLUMN IF NOT EXISTS role text;\n'
+                'ALTER TABLE "' + table + '" ADD COLUMN IF NOT EXISTS content text;\n'
+                'ALTER TABLE "' + table + '" ADD COLUMN IF NOT EXISTS sources text DEFAULT \'[]\';\n'
+                'ALTER TABLE "' + table + '" ADD COLUMN IF NOT EXISTS web_context text DEFAULT \'\';\n'
+                'ALTER TABLE "' + table + '" ADD COLUMN IF NOT EXISTS provider text DEFAULT \'local\';\n'
+                'ALTER TABLE "' + table + '" ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();\n'
+                'ALTER TABLE "' + table + '" DISABLE ROW LEVEL SECURITY;'
+            )
+        }
+
+    _LAST_SUPABASE_ERROR = None
+    return {
+        "status": "connected",
+        "url": url,
+        "table": table,
+        "message": f"Successfully connected to Supabase table '{table}' with all required columns.",
+    }
+
+
 def _supabase_request(method: str, path: str, payload: Optional[Any] = None) -> Any:
+    global _LAST_SUPABASE_ERROR
     base_url = os.getenv("SUPABASE_URL", _DEFAULT_SUPABASE_URL).rstrip("/")
     key = _get_api_key()
     if not key:
@@ -60,6 +162,7 @@ def _supabase_request(method: str, path: str, payload: Optional[Any] = None) -> 
     )
     with urlopen(request, timeout=10) as response:
         raw = response.read().decode("utf-8")
+        _LAST_SUPABASE_ERROR = None
         return json.loads(raw) if raw else []
 
 

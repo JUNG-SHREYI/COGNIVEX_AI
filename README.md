@@ -7,7 +7,7 @@ Cognivex is a multi-domain AI assistant with conversational chat, internet-groun
 - ChatGPT-style conversational interface
 - Village, college, industry, healthcare, and smart-city domains
 - Live web search through DuckDuckGo
-- Ollama or OpenAI-compatible LLM integration
+- OpenAI or Ollama LLM integration with conversational memory and automatic fallback
 - Local Cognivex model fallback when no external LLM is configured
 - Chat history containing user prompts, assistant answers, web context, sources, provider, and timestamps
 - Supabase REST persistence with a local JSON fallback for development
@@ -36,9 +36,16 @@ pip install fastapi uvicorn pydantic torch
 Create `backend/.env` locally. Never commit this file:
 
 ```env
-LLM_PROVIDER=ollama
-LLM_MODEL=llama3.2:3b
-OLLAMA_BASE_URL=http://127.0.0.1:11434
+# Automatic mode tries OpenAI, then Ollama, then local Cognivex
+LLM_PROVIDER=auto
+LLM_MODEL=gpt-4o-mini
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_API_KEY=replace-with-a-new-openai-api-key
+
+# Or use Ollama locally:
+# LLM_PROVIDER=ollama
+# OLLAMA_MODEL=llama3.2:3b
+# OLLAMA_BASE_URL=http://127.0.0.1:11434
 
 SUPABASE_URL=https://tgqjilgdnyzktppkybmu.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
@@ -50,6 +57,12 @@ For Ollama:
 ```powershell
 ollama pull llama3.2:3b
 ```
+
+For OpenAI, create a new API key in the OpenAI dashboard and put it only in
+`backend/.env`. The backend sends conversation history and optional web context
+to the configured model; the frontend never sees the key.
+With `LLM_PROVIDER=auto`, the app uses OpenAI when available, then a running
+Ollama model, then local Cognivex inference.
 
 Run the API:
 

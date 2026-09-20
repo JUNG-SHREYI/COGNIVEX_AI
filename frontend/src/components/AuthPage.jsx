@@ -88,6 +88,16 @@ export default function AuthPage({ onAuthenticated }) {
         <button className="auth-switch" onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setMessage(''); }}>
           {mode === 'signin' ? 'New to Cognivex? Create an account' : 'Already have an account? Sign in'}
         </button>
+        <div style={{ textAlign: 'center', marginTop: '12px' }}>
+          <button
+            type="button"
+            className="clear-history-button"
+            style={{ fontSize: '0.78rem', color: '#64748b', textDecoration: 'underline' }}
+            onClick={() => onAuthenticated({ id: 'guest-operator', email: 'operator@cognivex.local', user_metadata: { full_name: 'Guest Operator' } })}
+          >
+            Continue as Guest / Demo Mode &rarr;
+          </button>
+        </div>
       </section>
     </main>
   );
