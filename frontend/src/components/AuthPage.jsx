@@ -60,9 +60,9 @@ export default function AuthPage({ onAuthenticated }) {
           </div>
         </div>
         <div className="auth-copy">
-          <p className="auth-kicker">Private workspace</p>
+          <p className="auth-kicker">Account required</p>
           <h1>{mode === 'signin' ? 'Welcome back.' : 'Create your workspace.'}</h1>
-          <p>{mode === 'signin' ? 'Sign in to continue your conversations.' : 'Start a secure Cognivex workspace for your conversations.'}</p>
+          <p>{mode === 'signin' ? 'Sign in to start chatting.' : 'Create an account to start using Cognivex AI.'}</p>
         </div>
         <form className="auth-form" onSubmit={handleSubmit}>
           {mode === 'signup' && (
@@ -88,16 +88,6 @@ export default function AuthPage({ onAuthenticated }) {
         <button className="auth-switch" onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setMessage(''); }}>
           {mode === 'signin' ? 'New to Cognivex? Create an account' : 'Already have an account? Sign in'}
         </button>
-        <div style={{ textAlign: 'center', marginTop: '12px' }}>
-          <button
-            type="button"
-            className="clear-history-button"
-            style={{ fontSize: '0.78rem', color: '#64748b', textDecoration: 'underline' }}
-            onClick={() => onAuthenticated({ id: 'guest-operator', email: 'operator@cognivex.local', user_metadata: { full_name: 'Guest Operator' } })}
-          >
-            Continue as Guest / Demo Mode &rarr;
-          </button>
-        </div>
       </section>
     </main>
   );

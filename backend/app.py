@@ -135,14 +135,15 @@ class CustomDomainRequest(BaseModel):
     sample_incident: Dict[str, Any]
 
 
-def _require_admin(authorization: Optional[str]) -> Dict[str, Any]:
-    """Validate the Supabase session and enforce the server-side admin allowlist."""
+def _require_authenticated_user(authorization: Optional[str]) -> Dict[str, Any]:
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="Authentication required")
     token = authorization.split(" ", 1)[1].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required")
     api_key = _get_api_key()
     if not api_key:
-        raise HTTPException(status_code=503, detail="Supabase server credentials are not configured")
+        raise HTTPException(status_code=503, detail="Supabase credentials are not configured")
     url = os.getenv("SUPABASE_URL", "https://tgqjilgdnyzktppkybmu.supabase.co").rstrip("/")
     request = Request(
         f"{url}/auth/v1/user",
@@ -151,9 +152,26 @@ def _require_admin(authorization: Optional[str]) -> Dict[str, Any]:
     try:
         with urlopen(request, timeout=10) as response:
             user = json.loads(response.read().decode("utf-8"))
-    except (HTTPError, URLError, TimeoutError, OSError, ValueError):
+    except HTTPError as error:
+        if error.code in {401, 403}:
+            raise HTTPException(status_code=401, detail="Invalid or expired session") from error
+        raise HTTPException(
+            status_code=503,
+            detail="Unable to verify the Supabase session right now",
+        ) from error
+    except (URLError, TimeoutError, OSError, ValueError) as error:
+        raise HTTPException(
+            status_code=503,
+            detail="Unable to verify the Supabase session right now",
+        ) from error
+    if not isinstance(user, dict) or not user.get("id"):
         raise HTTPException(status_code=401, detail="Invalid or expired session")
+    return user
 
+
+def _require_admin(authorization: Optional[str]) -> Dict[str, Any]:
+    """Validate the Supabase session and enforce the server-side admin allowlist."""
+    user = _require_authenticated_user(authorization)
     allowed = {
         email.strip().lower()
         for email in os.getenv("ADMIN_EMAILS", "").split(",")
@@ -339,6 +357,7 @@ def run_dsa_tutor_prompt(
     req: DsaTutorPromptRequest,
     authorization: Optional[str] = Header(default=None),
 ):
+    _require_authenticated_user(authorization)
     selected_model = _validate_gemini_model(req.gemini_model)
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
@@ -435,6 +454,7 @@ def run_cognivex_prompt(
     req: CognivexPromptRequest,
     authorization: Optional[str] = Header(default=None),
 ):
+    _require_authenticated_user(authorization)
     max_tokens = req.max_tokens or 200
     selected_model = _validate_gemini_model(req.gemini_model)
     provider_config = os.getenv("LLM_PROVIDER", "local")

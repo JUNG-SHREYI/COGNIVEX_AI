@@ -37,6 +37,7 @@ class DsaTutorEndpointTests(unittest.TestCase):
         ]
 
         with (
+            patch.object(app, "_require_authenticated_user", return_value={"id": "test-user"}),
             patch.object(app, "get_history", return_value=history) as get_history,
             patch.object(app, "save_exchange") as save_exchange,
             patch.object(app, "urlopen", return_value=response) as urlopen,
@@ -90,21 +91,29 @@ class DsaTutorEndpointTests(unittest.TestCase):
         )
 
     def test_returns_configuration_error_when_api_key_is_missing(self):
-        with patch.dict(os.environ, {"GEMINI_API_KEY": ""}):
+        with (
+            patch.dict(os.environ, {"GEMINI_API_KEY": ""}),
+            patch.object(app, "_require_authenticated_user", return_value={"id": "test-user"}),
+        ):
             with self.assertRaises(HTTPException) as error:
                 app.run_dsa_tutor_prompt(
-                    app.DsaTutorPromptRequest(prompt="Explain stacks")
+                    app.DsaTutorPromptRequest(prompt="Explain stacks"),
+                    authorization="Bearer test-user-token",
                 )
 
         self.assertEqual(error.exception.status_code, 503)
 
     def test_rejects_unsupported_model_selection(self):
-        with self.assertRaises(HTTPException) as error:
+        with (
+            patch.object(app, "_require_authenticated_user", return_value={"id": "test-user"}),
+            self.assertRaises(HTTPException) as error,
+        ):
             app.run_dsa_tutor_prompt(
                 app.DsaTutorPromptRequest(
                     prompt="Explain stacks",
                     gemini_model="unknown-model",
-                )
+                ),
+                authorization="Bearer test-user-token",
             )
 
         self.assertEqual(error.exception.status_code, 400)

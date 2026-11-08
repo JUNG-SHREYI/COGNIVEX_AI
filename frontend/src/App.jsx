@@ -135,20 +135,9 @@ function getDomainIcon(iconName) {
   }
 }
 
-function getGuestSessionId() {
-  const storageKey = 'cognivex.guestSessionId';
-  let guestSessionId = window.localStorage.getItem(storageKey);
-  if (!guestSessionId) {
-    guestSessionId = `guest-${window.crypto.randomUUID()}`;
-    window.localStorage.setItem(storageKey, guestSessionId);
-  }
-  return guestSessionId;
-}
-
 export default function App() {
   const [user, setUser] = useState(null);
   const [accessToken, setAccessToken] = useState(null);
-  const [guestSessionId] = useState(getGuestSessionId);
   const [authLoading, setAuthLoading] = useState(true);
   const [adminOverview, setAdminOverview] = useState(null);
   const [adminError, setAdminError] = useState('');
@@ -208,7 +197,7 @@ export default function App() {
   const cropCanvasRef = useRef(null);
   const cropDragRef = useRef(null);
   const sidebarResizeRef = useRef(false);
-  const sessionId = user?.id === 'guest-operator' ? guestSessionId : user?.id || guestSessionId;
+  const sessionId = user?.id || '';
   const messagesEndRef = useRef(null);
   const skipHistoryLoadForChatRef = useRef(null);
 
@@ -306,7 +295,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (!user || (user.id !== 'guest-operator' && !accessToken)) return undefined;
+    if (!user || !accessToken) return undefined;
     let active = true;
     getChatSessions(sessionId, accessToken)
       .then((data) => {
@@ -338,7 +327,7 @@ export default function App() {
   }, [user, accessToken, sessionId]);
 
   useEffect(() => {
-    if (!activeChatId || activeChatId.startsWith('draft-') || !user || (user.id !== 'guest-operator' && !accessToken)) {
+    if (!activeChatId || activeChatId.startsWith('draft-') || !user || !accessToken) {
       return undefined;
     }
     if (skipHistoryLoadForChatRef.current === activeChatId) {
@@ -1028,10 +1017,10 @@ export default function App() {
               onClick={() => setIsProfileMenuOpen((open) => !open)}
               aria-haspopup="menu"
               aria-expanded={isProfileMenuOpen}
-              aria-label={`Profile menu for ${user.email || 'Guest / Demo'}`}
+              aria-label={`Profile menu for ${user.email || 'Account'}`}
             >
               <span className="sidebar-avatar">{(user.email || 'G').slice(0, 1).toUpperCase()}</span>
-              <span className="sidebar-account-email" title={user.email}>{user.email || 'Guest / Demo'}</span>
+              <span className="sidebar-account-email" title={user.email}>{user.email || 'Account'}</span>
               <ChevronDown size={14} />
             </button>
           </div>

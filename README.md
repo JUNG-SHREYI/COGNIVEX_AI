@@ -10,7 +10,7 @@ Cognivex is a multi-domain AI assistant with conversational chat, internet-groun
 - Google Gemini integration with conversational memory and a local Cognivex fallback
 - Local Cognivex model fallback when no external LLM is configured
 - Chat history containing user prompts, assistant answers, web context, sources, provider, and timestamps
-- Private, per-user Supabase history for authenticated users; Guest/Demo history stays local
+- Account-required AI chat with private, per-user Supabase history
 
 ## Project Structure
 
@@ -78,7 +78,7 @@ The backend runs at `http://127.0.0.1:8000`.
 
 Run [backend/supabase_schema.sql](backend/supabase_schema.sql) in the Supabase SQL Editor. This script creates `Chat_Sessions`, upgrades `Chat_History` with a conversation ID, migrates existing user history into one saved conversation per user, enables row-level security (RLS), and creates per-user policies. Apply the migration before using persistent signed-in history.
 
-Authenticated requests forward the user's Supabase access token to the backend and Supabase REST API; RLS enforces ownership. Each conversation is listed separately in the left sidebar, and **New chat** starts an independent conversation while retaining previous chats. Guest/Demo conversations are stored locally in backend JSON files. The service-role key, if configured for server-side admin features, must remain on the backend. Never place it in React code, commit it, or share it publicly.
+AI chat requires a valid Supabase sign-in. Requests forward the user's access token to the backend and Supabase REST API; the backend verifies the token with Supabase Auth and RLS enforces ownership. Each conversation is listed separately in the left sidebar, and **New chat** starts an independent conversation while retaining previous chats. The service-role key, if configured for server-side admin features, must remain on the backend. Never place it in React code, commit it, or share it publicly.
 
 ## Chat History in Supabase
 
@@ -100,8 +100,9 @@ where history.user_id = 'your-supabase-user-id'
 order by chat.created_at desc, history.created_at asc;
 ```
 
-Guest / Demo Mode stores its history in the backend's local JSON file instead
-of Supabase. Each browser gets its own guest session ID.
+AI chat is available to signed-in users only. Anyone can create an account
+through the sign-up form; update Supabase Auth's Site URL and redirect allowlist
+after deploying the frontend.
 
 ## Frontend Setup
 
@@ -136,7 +137,8 @@ services are created from the GitHub repository; Render uses [render.yaml](rende
    include the Vercel URL.
 4. Keep Gemini and any Supabase secret keys exclusively in the backend host's
    environment variables. Do not commit them or enter them into frontend
-   settings.
+   settings. Configure custom SMTP and review Supabase Auth rate limits before
+   promoting public sign-up to a large audience.
 
 The free Render API can spin down while idle, and Supabase may pause a Free Plan
 project after 7 days of low activity. The first request after a Render spin-down
