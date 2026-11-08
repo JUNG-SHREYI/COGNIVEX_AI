@@ -1,0 +1,6 @@
+backend
+dsa-ai-tutor
+.venv
+dist
+frontend/node_modules
+frontend/dist

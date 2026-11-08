@@ -126,8 +126,10 @@ services are created from the GitHub repository; Render uses [render.yaml](rende
    the free plan and enter the requested `GEMINI_API_KEY` and
    `SUPABASE_PUBLISHABLE_KEY` in Render's environment-variable prompts. Render
    provides the API URL after deployment.
-2. In Vercel, import this repository and set the project root to `frontend`.
-   Set `VITE_API_BASE_URL` to the Render API origin (without `/api`),
+2. In Vercel, import this repository and set the project root to the repository
+   root (`.`). The root [vercel.json](vercel.json) builds only the Vite frontend;
+   `.vercelignore` excludes the Python backend from Vercel's build and dependency
+   detection. Set `VITE_API_BASE_URL` to the Render API origin (without `/api`),
    `VITE_SUPABASE_URL` to the Supabase project URL, and
    `VITE_SUPABASE_PUBLISHABLE_KEY` to the project's publishable key. These
    frontend variables are public; never use a Supabase secret/service-role key.
