@@ -74,9 +74,9 @@ export default function LandingPage({ onSignIn, onSignUp }) {
             {emailCopied ? <Check size={15} /> : <Copy size={15} />}
             {emailCopied ? 'Copied!' : 'Copy Email'}
           </button>
-          <a className="landing-signup landing-signup-header" href={`mailto:${CONTACT_EMAIL}?subject=Book%20an%20AI%20consultation`}>
-            Book AI Consultation <ArrowRight size={16} />
-          </a>
+          <button className="landing-signup landing-signup-header" type="button" onClick={onSignUp}>
+            Get Started <ArrowRight size={16} />
+          </button>
         </div>
       </header>
 
@@ -94,9 +94,9 @@ export default function LandingPage({ onSignIn, onSignUp }) {
             and smart-city applications.
           </p>
           <div className="landing-hero-actions">
-            <a className="landing-signup" href={`mailto:${CONTACT_EMAIL}?subject=Book%20an%20AI%20consultation`}>
-              <ArrowRight size={17} /> Book AI Consultation
-            </a>
+            <button className="landing-signup" type="button" onClick={onSignUp}>
+              <ArrowRight size={17} /> Get Started
+            </button>
             <a className="landing-secondary-action" href="#solutions">
               <Building2 size={16} /> Explore Solutions
             </a>
