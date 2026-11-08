@@ -21,6 +21,8 @@ export default function AuthPage({ initialMode = 'signin', onAuthenticated, onBa
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [emailOtp, setEmailOtp] = useState('');
+  const [awaitingEmailOtp, setAwaitingEmailOtp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
@@ -35,6 +37,30 @@ export default function AuthPage({ initialMode = 'signin', onAuthenticated, onBa
 
     setMessage('');
     setIsSuccess(false);
+    if (mode === 'signup' && awaitingEmailOtp) {
+      if (!/^\d{6}$/.test(emailOtp.trim())) {
+        setMessage('Enter the 6-digit code from your email.');
+        return;
+      }
+
+      setIsSubmitting(true);
+      try {
+        const { data, error } = await supabase.auth.verifyOtp({
+          email: email.trim(),
+          token: emailOtp.trim(),
+          type: 'signup'
+        });
+        if (error) throw error;
+        if (!data.session) throw new Error('Email verified. Please sign in to continue.');
+        onAuthenticated(data.user, data.session.access_token);
+      } catch (error) {
+        setMessage(error.message || 'Email verification failed. Check the code and try again.');
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     if (mode === 'signup') {
       const passwordError = getPasswordError(password);
       if (passwordError) {
@@ -61,8 +87,9 @@ export default function AuthPage({ initialMode = 'signin', onAuthenticated, onBa
         } else {
           setPassword('');
           setConfirmPassword('');
+          setAwaitingEmailOtp(true);
           setIsSuccess(true);
-          setMessage(`If ${email.trim()} can be registered, a confirmation email will be sent. Check your inbox and spam folder.`);
+          setMessage(`A 6-digit verification code was requested for ${email.trim()}. Check your inbox and spam folder.`);
         }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -98,7 +125,7 @@ export default function AuthPage({ initialMode = 'signin', onAuthenticated, onBa
           <p>{mode === 'signin' ? 'Sign in to start chatting.' : 'Sign up to start using Cognivex AI.'}</p>
         </div>
         <form className="auth-form" onSubmit={handleSubmit}>
-          {mode === 'signup' && (
+          {mode === 'signup' && !awaitingEmailOtp && (
             <label>
               <span>Name</span>
               <div className="auth-input"><UserRound size={17} /><input value={name} onChange={(event) => setName(event.target.value)} placeholder="Your name" autoComplete="name" required /></div>
@@ -106,13 +133,20 @@ export default function AuthPage({ initialMode = 'signin', onAuthenticated, onBa
           )}
           <label>
             <span>Email</span>
-            <div className="auth-input"><Mail size={17} /><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" autoComplete="email" required /></div>
+            <div className="auth-input"><Mail size={17} /><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" autoComplete="email" disabled={awaitingEmailOtp} required /></div>
           </label>
-          <label>
-            <span>Password</span>
-            <div className="auth-input"><LockKeyhole size={17} /><input type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={mode === 'signup' ? 'At least 6 characters' : 'Your password'} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} minLength={mode === 'signup' ? 6 : undefined} required /><button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>
-          </label>
-          {mode === 'signup' && (
+          {mode === 'signup' && awaitingEmailOtp ? (
+            <label>
+              <span>Email verification code</span>
+              <div className="auth-input"><LockKeyhole size={17} /><input type="text" value={emailOtp} onChange={(event) => setEmailOtp(event.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="6-digit code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required /></div>
+            </label>
+          ) : (
+            <label>
+              <span>Password</span>
+              <div className="auth-input"><LockKeyhole size={17} /><input type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} placeholder={mode === 'signup' ? 'At least 6 characters' : 'Your password'} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} minLength={mode === 'signup' ? 6 : undefined} required /><button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div>
+            </label>
+          )}
+          {mode === 'signup' && !awaitingEmailOtp && (
             <>
               <p className="auth-password-hint">Use at least 6 characters, starting with a capital letter, with a number and a special character. No character may repeat more than 3 times consecutively.</p>
               <label>
@@ -123,13 +157,20 @@ export default function AuthPage({ initialMode = 'signin', onAuthenticated, onBa
           )}
           {message && <p className={isSuccess ? 'auth-message auth-message-success' : 'auth-message'} role="status">{message}</p>}
           <button className="auth-submit" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Please wait...' : mode === 'signin' ? 'Sign in' : 'Sign up'}
+            {isSubmitting ? 'Please wait...' : mode === 'signin' ? 'Sign in' : awaitingEmailOtp ? 'Verify email' : 'Sign up'}
             {!isSubmitting && <ArrowRight size={17} />}
           </button>
         </form>
-        <button className="auth-switch" type="button" onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setMessage(''); setIsSuccess(false); setPassword(''); setConfirmPassword(''); }}>
-          {mode === 'signin' ? 'New to Cognivex? Sign up' : 'Already have an account? Sign in'}
-        </button>
+        {awaitingEmailOtp && (
+          <button className="auth-switch" type="button" onClick={() => { setAwaitingEmailOtp(false); setEmailOtp(''); setMessage(''); setIsSuccess(false); }}>
+            Use a different email
+          </button>
+        )}
+        {!awaitingEmailOtp && (
+          <button className="auth-switch" type="button" onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setMessage(''); setIsSuccess(false); setPassword(''); setConfirmPassword(''); setEmailOtp(''); setAwaitingEmailOtp(false); }}>
+            {mode === 'signin' ? 'New to Cognivex? Sign up' : 'Already have an account? Sign in'}
+          </button>
+        )}
       </section>
     </main>
   );
