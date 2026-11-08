@@ -108,9 +108,6 @@ export default function LandingPage({ onSignIn, onSignUp }) {
               {emailCopied ? 'Copied!' : '(Click to copy)'}
             </button>
           </div>
-          <p className="landing-account-prompt">
-            New to Cognivex AI? <button type="button" onClick={onSignUp}>Create your account</button>
-          </p>
         </div>
       </section>
 
@@ -158,7 +155,7 @@ export default function LandingPage({ onSignIn, onSignUp }) {
         </div>
         <div className="landing-trust-actions">
           <button className="landing-secondary-action" type="button" onClick={onSignIn}>Sign in securely <ArrowRight size={16} /></button>
-          <button className="landing-trust-signup" type="button" onClick={onSignUp}>Create an account</button>
+          <button className="landing-trust-signup" type="button" onClick={onSignUp}>Get Started</button>
         </div>
       </section>
 
@@ -171,11 +168,11 @@ export default function LandingPage({ onSignIn, onSignUp }) {
         </details>
         <details>
           <summary>Do I need an account to use the platform?</summary>
-          <p>Yes. Create an account or sign in to access the AI workspace and your saved conversations.</p>
+          <p>Sign up or sign in to access the AI workspace and your saved conversations.</p>
         </details>
         <details>
           <summary>How do I get started?</summary>
-          <p>Select “Get started” to create your account, or choose “Sign in” if you already have one.</p>
+          <p>Select “Get Started” to sign up, or choose “Sign in” if you already have an account.</p>
         </details>
       </section>
 

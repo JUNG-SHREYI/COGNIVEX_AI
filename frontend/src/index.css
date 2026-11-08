@@ -1356,27 +1356,6 @@ code, pre, .font-mono {
   cursor: pointer;
 }
 
-.landing-account-prompt {
-  margin: 12px auto 0;
-  color: #78839a;
-  font-size: 0.75rem;
-}
-
-.landing-account-prompt button {
-  padding: 0;
-  color: #5140cf;
-  background: none;
-  border: 0;
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.landing-account-prompt button:hover {
-  color: #3928a6;
-  text-decoration: underline;
-}
-
 .landing-signin {
   padding: 10px 0;
   background: transparent;
@@ -1950,6 +1929,8 @@ code, pre, .font-mono {
 .auth-input input { width: 100%; min-width: 0; padding: 12px 0; color: #f8fafc; background: transparent; border: 0; outline: 0; font: inherit; font-size: 0.88rem; }
 .auth-input button { display: grid; place-items: center; color: #64748b; background: transparent; border: 0; cursor: pointer; }
 .auth-message { color: #fda4af; font-size: 0.78rem; line-height: 1.5; }
+.auth-message-success { color: #bef264; }
+.auth-password-hint { margin: -8px 0 0; color: #94a3b8; font-size: 0.72rem; line-height: 1.5; }
 .auth-submit { justify-content: center; gap: 8px; padding: 12px 16px; color: #0f172a; background: #bef264; border: 0; border-radius: 10px; font: inherit; font-weight: 700; cursor: pointer; }
 .auth-submit:disabled { opacity: 0.6; cursor: wait; }
 .auth-switch { width: 100%; margin-top: 20px; color: #7dd3fc; background: transparent; border: 0; font: inherit; font-size: 0.78rem; cursor: pointer; }
@@ -2445,7 +2426,6 @@ code, pre, .font-mono {
   .landing-hero-actions { flex-direction: column; }
   .landing-hero-actions > * { width: min(290px, 100%); }
   .landing-contact-pill { gap: 6px; padding-inline: 10px; font-size: 0.7rem; }
-  .landing-account-prompt { font-size: 0.72rem; }
   .landing-hero-actions .landing-signup,
   .landing-hero-actions .landing-secondary-action { width: min(290px, 100%); }
   .landing-title-break { display: none; }
