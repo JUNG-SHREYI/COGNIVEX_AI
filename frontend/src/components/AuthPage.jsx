@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Sparkles, UserRound } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, UserRound } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 export default function AuthPage({ onAuthenticated }) {
@@ -53,7 +53,7 @@ export default function AuthPage({ onAuthenticated }) {
     <main className="auth-page">
       <section className="auth-panel">
         <div className="auth-brand">
-          <div className="auth-mark"><Sparkles size={22} /></div>
+          <img className="auth-mark" src="/cognivex-logo.png" alt="" />
           <div>
             <strong>COGNIVEX AI</strong>
             <span>Intelligence workspace</span>

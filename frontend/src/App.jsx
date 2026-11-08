@@ -875,7 +875,7 @@ export default function App() {
       <aside id="conversation-sidebar" className="conversation-sidebar" aria-label="Chat history sidebar">
         <div className="sidebar-domains">
           <div className="sidebar-brand">
-            <div className="sidebar-brand-mark"><Sparkles size={17} /></div>
+            <img className="sidebar-brand-mark" src="/cognivex-logo.png" alt="" />
             <strong>Cognivex AI</strong>
             <button
               type="button"

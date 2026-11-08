@@ -545,11 +545,10 @@ code, pre, .font-mono {
 .sidebar-brand-mark {
   width: 28px;
   height: 28px;
-  display: grid;
-  place-items: center;
-  color: #d9f99d;
-  background: rgba(132, 204, 22, 0.12);
-  border: 1px solid rgba(190, 242, 100, 0.2);
+  flex: 0 0 28px;
+  object-fit: cover;
+  background: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: 9px;
 }
 
@@ -1285,7 +1284,7 @@ code, pre, .font-mono {
 .auth-brand { gap: 12px; margin-bottom: 40px; }
 .auth-brand strong { display: block; color: #f8fafc; letter-spacing: 0.04em; font-size: 0.92rem; }
 .auth-brand span { display: block; color: #64748b; font-size: 0.72rem; margin-top: 3px; }
-.auth-mark { width: 40px; height: 40px; justify-content: center; color: #d9f99d; background: linear-gradient(135deg, #164e63, #365314); border-radius: 12px; }
+.auth-mark { width: 40px; height: 40px; object-fit: cover; background: #fff; border-radius: 12px; }
 .auth-copy { margin-bottom: 24px; }
 .auth-kicker { color: #a3e635; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; }
 .auth-copy h1 { color: #f8fafc; font-size: 2rem; letter-spacing: -0.04em; margin-bottom: 8px; }
