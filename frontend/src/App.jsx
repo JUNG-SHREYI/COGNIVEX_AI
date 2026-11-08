@@ -49,6 +49,7 @@ const SIDEBAR_COLLAPSED_STORAGE_KEY = 'cognivex.sidebarCollapsed';
 const MIN_SIDEBAR_WIDTH = 152;
 const MAX_SIDEBAR_WIDTH = 400;
 const DEFAULT_SIDEBAR_WIDTH = 248;
+const ADMIN_EMAIL = 'bitrashreyi97@gmail.com';
 
 function getMaxSidebarWidth() {
   return Math.max(
@@ -1003,17 +1004,19 @@ export default function App() {
                   <Settings size={15} />
                   <span>Settings</span>
                 </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setIsProfileMenuOpen(false);
-                    openAdmin();
-                  }}
-                >
-                  <ShieldCheck size={15} />
-                  <span>Admin</span>
-                </button>
+                {user.email?.trim().toLowerCase() === ADMIN_EMAIL && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      openAdmin();
+                    }}
+                  >
+                    <ShieldCheck size={15} />
+                    <span>Admin</span>
+                  </button>
+                )}
                 {adminError && <p className="sidebar-profile-error">{adminError}</p>}
                 <button
                   type="button"

@@ -1,15 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  ArrowDown,
   ArrowRight,
-  BrainCircuit,
   Building2,
+  Check,
+  Copy,
   Factory,
   GraduationCap,
   HeartPulse,
+  Mail,
   ShieldCheck,
   Wheat
 } from 'lucide-react';
+
+const CONTACT_EMAIL = 'bitrashreyi97@gmail.com';
 
 const solutions = [
   {
@@ -40,6 +43,18 @@ const solutions = [
 ];
 
 export default function LandingPage({ onSignIn, onSignUp }) {
+  const [emailCopied, setEmailCopied] = useState(false);
+
+  const handleCopyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText(CONTACT_EMAIL);
+      setEmailCopied(true);
+    } catch (error) {
+      console.error('Unable to copy the Cognivex contact email:', error);
+      window.location.href = `mailto:${CONTACT_EMAIL}`;
+    }
+  };
+
   return (
     <main className="landing-page">
       <header className="landing-header">
@@ -49,48 +64,49 @@ export default function LandingPage({ onSignIn, onSignUp }) {
         </a>
         <nav className="landing-nav" aria-label="Main navigation">
           <a href="#solutions">Solutions</a>
-          <a href="#how-it-works">How it works</a>
+          <a href="#how-it-works">Process</a>
           <a href="#security">Security</a>
           <a href="#faq">FAQ</a>
         </nav>
         <div className="landing-header-actions">
-          <button className="landing-signin" type="button" onClick={onSignIn}>Sign in</button>
-          <button className="landing-signup landing-signup-header" type="button" onClick={onSignUp}>
-            Get started <ArrowRight size={16} />
+          <button className="landing-copy-email" type="button" onClick={handleCopyEmail}>
+            {emailCopied ? <Check size={15} /> : <Copy size={15} />}
+            {emailCopied ? 'Copied!' : 'Copy Email'}
           </button>
+          <a className="landing-signup landing-signup-header" href={`mailto:${CONTACT_EMAIL}?subject=Book%20an%20AI%20consultation`}>
+            Book AI Consultation <ArrowRight size={16} />
+          </a>
         </div>
       </header>
 
       <section className="landing-hero" id="home">
         <div className="landing-hero-glow" aria-hidden="true" />
         <div className="landing-hero-content">
-          <p className="landing-eyebrow"><span /> A unified multi-domain intelligence platform</p>
+          <p className="landing-eyebrow"><span /> Bespoke AI Engineering &amp; Workflow Optimization</p>
           <h1>
-            One AI workspace
-            <br />
-            for <span>real-world decisions</span>
+            <span className="landing-heading-dark">Custom AI Tools &amp;<br />Workflow Systems</span>
+            <span className="landing-heading-gradient">Tailored to Your Exact Business<br className="landing-title-break" />Needs</span>
           </h1>
           <p className="landing-hero-description">
-            Meet Cognivex AI: a conversational intelligence platform connecting insights
-            across villages, education, industry, healthcare, and smart cities.
+            Cognivex AI unites Gemini-powered chat, causal reasoning, and a DSA AI Tutor<br className="landing-description-break" />
+            in one workspace, with focused intelligence for village, education, industry,<br className="landing-description-break" />
+            healthcare, and smart-city applications.
           </p>
           <div className="landing-hero-actions">
-            <button className="landing-signup" type="button" onClick={onSignUp}>
-              Create your account <ArrowRight size={17} />
-            </button>
+            <a className="landing-signup" href={`mailto:${CONTACT_EMAIL}?subject=Book%20an%20AI%20consultation`}>
+              <ArrowRight size={17} /> Book AI Consultation
+            </a>
             <a className="landing-secondary-action" href="#solutions">
-              Explore the platform <ArrowDown size={16} />
+              <Building2 size={16} /> Explore Solutions
             </a>
           </div>
-          <div className="landing-platform-note">
-            <BrainCircuit size={17} />
-            <span>Ask questions. Explore evidence. Make more informed decisions.</span>
+          <div className="landing-contact-pill">
+            <Mail size={15} />
+            <span>Inquiries: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></span>
+            <button type="button" onClick={handleCopyEmail}>
+              {emailCopied ? 'Copied!' : '(Click to copy)'}
+            </button>
           </div>
-        </div>
-        <div className="landing-domain-strip" aria-label="Platform domains">
-          {solutions.map((solution) => (
-            <span key={solution.title}>{solution.icon}{solution.title}</span>
-          ))}
         </div>
       </section>
 
@@ -136,7 +152,10 @@ export default function LandingPage({ onSignIn, onSignUp }) {
           <h2>Your workspace starts with your account.</h2>
           <p>Sign in securely to access your Cognivex AI conversations and workspace.</p>
         </div>
-        <button className="landing-secondary-action" type="button" onClick={onSignIn}>Sign in securely <ArrowRight size={16} /></button>
+        <div className="landing-trust-actions">
+          <button className="landing-secondary-action" type="button" onClick={onSignIn}>Sign in securely <ArrowRight size={16} /></button>
+          <button className="landing-trust-signup" type="button" onClick={onSignUp}>Create an account</button>
+        </div>
       </section>
 
       <section className="landing-faq" id="faq">

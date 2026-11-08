@@ -64,6 +64,8 @@ app = FastAPI(
     version="2.0.0"
 )
 
+ADMIN_EMAIL = "bitrashreyi97@gmail.com"
+
 cors_origins = [
     origin.strip()
     for origin in os.getenv(
@@ -170,14 +172,10 @@ def _require_authenticated_user(authorization: Optional[str]) -> Dict[str, Any]:
 
 
 def _require_admin(authorization: Optional[str]) -> Dict[str, Any]:
-    """Validate the Supabase session and enforce the server-side admin allowlist."""
+    """Validate the Supabase session and enforce the designated admin email."""
     user = _require_authenticated_user(authorization)
-    allowed = {
-        email.strip().lower()
-        for email in os.getenv("ADMIN_EMAILS", "").split(",")
-        if email.strip()
-    }
-    if not user.get("email") or user["email"].lower() not in allowed:
+    email = user.get("email")
+    if not isinstance(email, str) or email.strip().lower() != ADMIN_EMAIL:
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
 
