@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import CustomDomainModal from './components/CustomDomainModal';
 import AuthPage from './components/AuthPage';
+import LandingPage from './components/LandingPage';
 import AdminPage from './components/AdminPage';
 import { supabase } from './supabaseClient';
 import {
@@ -139,6 +140,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [accessToken, setAccessToken] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [publicPage, setPublicPage] = useState('landing');
   const [adminOverview, setAdminOverview] = useState(null);
   const [adminError, setAdminError] = useState('');
   const [domains, setDomains] = useState([]);
@@ -377,8 +379,20 @@ export default function App() {
 
   if (authLoading) return <div className="auth-loading">Loading Cognivex...</div>;
   if (!user) {
+    if (publicPage === 'landing') {
+      return (
+        <LandingPage
+          onSignIn={() => setPublicPage('signin')}
+          onSignUp={() => setPublicPage('signup')}
+        />
+      );
+    }
+
     return (
       <AuthPage
+        key={publicPage}
+        initialMode={publicPage}
+        onBack={() => setPublicPage('landing')}
         onAuthenticated={(authenticatedUser, token) => {
           setUser(authenticatedUser);
           setAccessToken(token || null);

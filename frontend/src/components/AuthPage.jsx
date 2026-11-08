@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, UserRound } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole, Mail, UserRound } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
-export default function AuthPage({ onAuthenticated }) {
-  const [mode, setMode] = useState('signin');
+export default function AuthPage({ initialMode = 'signin', onAuthenticated, onBack }) {
+  const [mode, setMode] = useState(initialMode);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -52,6 +52,9 @@ export default function AuthPage({ onAuthenticated }) {
   return (
     <main className="auth-page">
       <section className="auth-panel">
+        <button className="auth-back" type="button" onClick={onBack}>
+          <ArrowLeft size={16} /> Back to home
+        </button>
         <div className="auth-brand">
           <img className="auth-mark" src="/cognivex-logo.png" alt="" />
           <div>
