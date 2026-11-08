@@ -20,10 +20,10 @@ import {
   promptDsaTutor
 } from './api';
 import {
-  ArrowUp, Bot, ChevronDown, LogOut, MessageSquare,
+  ArrowLeft, ArrowUp, Bot, ChevronDown, ChevronRight, ImagePlus, KeyRound, LogOut, MessageSquare,
   MessageSquarePlus, Settings, ShieldCheck, Sparkles, Trash2, User, X,
   Wheat, GraduationCap, Factory, HeartPulse, Building2, Zap, PanelLeftClose, PanelLeftOpen,
-  Brain, Shield, Layers, Palette, ImagePlus
+  Brain, Layers
 } from 'lucide-react';
 
 const APP_THEMES = [
@@ -178,8 +178,9 @@ export default function App() {
   const [isCustomDomainOpen, setIsCustomDomainOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState(null);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
-  const [appTheme, setAppTheme] = useState(() => {
+  const [appTheme] = useState(() => {
     const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
     return APP_THEMES.some((theme) => theme.id === savedTheme) ? savedTheme : 'midnight';
   });
@@ -279,8 +280,14 @@ export default function App() {
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user || null);
       setAccessToken(session?.access_token || null);
-      if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
-      if (event === 'SIGNED_OUT') setIsPasswordRecovery(false);
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsPasswordRecovery(true);
+        setSettingsSection('password');
+      }
+      if (event === 'SIGNED_OUT') {
+        setIsPasswordRecovery(false);
+        setSettingsSection(null);
+      }
       setAuthLoading(false);
     });
     return () => listener.subscription.unsubscribe();
@@ -606,13 +613,9 @@ export default function App() {
     window.localStorage.setItem('cognivex.reduceMotion', String(enabled));
   };
 
-  const handleThemeChange = (themeId) => {
-    try {
-      window.localStorage.setItem(THEME_STORAGE_KEY, themeId);
-      setAppTheme(themeId);
-    } catch (error) {
-      console.error('Failed to save app theme:', error);
-    }
+  const closeSettings = () => {
+    setIsSettingsOpen(false);
+    setSettingsSection(null);
   };
 
   const handleSidebarWidthChange = (width) => {
@@ -1002,6 +1005,7 @@ export default function App() {
                   role="menuitem"
                   onClick={() => {
                     setIsProfileMenuOpen(false);
+                    setSettingsSection(null);
                     setIsSettingsOpen(true);
                   }}
                 >
@@ -1317,7 +1321,7 @@ export default function App() {
         <div
           className="settings-backdrop"
           onMouseDown={(event) => {
-            if (!isPasswordRecovery && event.target === event.currentTarget) setIsSettingsOpen(false);
+            if (!isPasswordRecovery && event.target === event.currentTarget) closeSettings();
           }}
         >
           <section
@@ -1328,18 +1332,42 @@ export default function App() {
           >
             <header className="settings-heading">
               <div>
-                <span className="settings-kicker">{isPasswordRecovery ? 'Account security' : 'Preferences'}</span>
-                <h2 id="settings-title">{isPasswordRecovery ? 'Reset password' : 'Settings'}</h2>
+                <span className="settings-kicker">
+                  {isPasswordRecovery ? 'Account security' : 'Preferences'}
+                </span>
+                <h2 id="settings-title">
+                  {isPasswordRecovery
+                    ? 'Reset password'
+                    : settingsSection === 'password'
+                      ? 'Change password'
+                      : settingsSection === 'background'
+                        ? 'Change background'
+                        : settingsSection === 'motion'
+                          ? 'Reduce motion'
+                          : 'Settings'}
+                </h2>
               </div>
               {!isPasswordRecovery && (
-                <button
-                  type="button"
-                  className="settings-close"
-                  onClick={() => setIsSettingsOpen(false)}
-                  aria-label="Close settings"
-                >
-                  <X size={18} />
-                </button>
+                <div className="settings-heading-actions">
+                  {settingsSection && (
+                    <button
+                      type="button"
+                      className="settings-back"
+                      onClick={() => setSettingsSection(null)}
+                    >
+                      <ArrowLeft size={15} />
+                      Settings
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="settings-close"
+                    onClick={closeSettings}
+                    aria-label="Close settings"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
               )}
             </header>
             {isPasswordRecovery ? (
@@ -1352,147 +1380,135 @@ export default function App() {
                 }}
               />
             ) : (
-            <>
-            <PasswordSettings user={user} />
-            <div className="settings-section">
-              <h3>Appearance</h3>
-              <label className="settings-sidebar-width">
-                <span>
-                  <strong>Sidebar width</strong>
-                  <span>Drag the divider or adjust it here. The chat area fills the remaining space.</span>
-                </span>
-                <input
-                  type="range"
-                  min={MIN_SIDEBAR_WIDTH}
-                  max={getMaxSidebarWidth()}
-                  step="4"
-                  value={sidebarWidth}
-                  onChange={(event) => handleSidebarWidthChange(Number(event.target.value))}
-                  aria-label="Sidebar width"
-                  aria-valuetext={`${sidebarWidth} pixels`}
-                />
-                <output>{sidebarWidth}px</output>
-              </label>
-              <div className="settings-theme-grid" role="group" aria-label="App color theme">
-                {APP_THEMES.map((theme) => (
-                  <button
-                    key={theme.id}
-                    type="button"
-                    className={`settings-theme-choice${appTheme === theme.id ? ' active' : ''}`}
-                    onClick={() => handleThemeChange(theme.id)}
-                    aria-pressed={appTheme === theme.id}
-                  >
-                    <span className="settings-theme-swatch" style={{ backgroundColor: theme.color }}>
-                      {appTheme === theme.id && <Palette size={15} />}
-                    </span>
-                    <span>{theme.label}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="settings-option settings-background-option">
-                <div>
-                  <strong>Custom background</strong>
-                  <p>Choose an image, adjust its crop and dimensions, then save it across the app.</p>
+              settingsSection === 'password' ? (
+                <PasswordSettings user={user} />
+              ) : settingsSection === 'background' ? (
+                <div className="settings-section">
+                  <div className="settings-option settings-background-option">
+                    <div>
+                      <strong>Custom background</strong>
+                      <p>Choose an image, adjust its crop and dimensions, then save it across the app.</p>
+                    </div>
+                    <label className="settings-upload-button">
+                      <ImagePlus size={16} />
+                      <span>{customBackground ? 'Change' : 'Choose image'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleBackgroundUpload}
+                        disabled={isSavingBackground}
+                        aria-label="Choose a custom background image"
+                      />
+                    </label>
+                  </div>
+                  {cropImage && (
+                    <div className="background-cropper" role="group" aria-label="Crop custom background">
+                      <div className="background-cropper-heading">
+                        <strong>Adjust your background</strong>
+                        <span>Drag the image to position it.</span>
+                      </div>
+                      <canvas
+                        ref={cropCanvasRef}
+                        className="background-crop-preview"
+                        onPointerDown={handleCropPointerDown}
+                        onPointerMove={handleCropPointerMove}
+                        onPointerUp={handleCropPointerUp}
+                        onPointerCancel={handleCropPointerUp}
+                        aria-label="Drag to position the background crop"
+                      />
+                      <div className="background-crop-controls">
+                        <label>
+                          Width
+                          <input
+                            type="number"
+                            min="320"
+                            max="4096"
+                            value={cropWidth}
+                            onChange={(event) => handleCropDimensionChange('width', event.target.value)}
+                            onBlur={() => handleCropDimensionBlur('width')}
+                          />
+                          <span>px</span>
+                        </label>
+                        <label>
+                          Height
+                          <input
+                            type="number"
+                            min="320"
+                            max="4096"
+                            value={cropHeight}
+                            onChange={(event) => handleCropDimensionChange('height', event.target.value)}
+                            onBlur={() => handleCropDimensionBlur('height')}
+                          />
+                          <span>px</span>
+                        </label>
+                      </div>
+                      <label className="background-crop-zoom">
+                        <span>Zoom</span>
+                        <input
+                          type="range"
+                          min="1"
+                          max="4"
+                          step="0.01"
+                          value={cropZoom}
+                          onChange={(event) => setCropZoom(Number(event.target.value))}
+                        />
+                        <span>{cropZoom.toFixed(1)}×</span>
+                      </label>
+                      <div className="background-crop-actions">
+                        <button type="button" onClick={closeBackgroundCropper} disabled={isSavingBackground}>
+                          Cancel
+                        </button>
+                        <button type="button" onClick={handleSaveBackground} disabled={isSavingBackground}>
+                          {isSavingBackground ? 'Saving…' : 'Save as background'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {customBackground && (
+                    <div className="settings-background-preview">
+                      <img src={customBackground} alt="Custom app background preview" />
+                      <button type="button" onClick={handleRemoveBackground}>
+                        <Trash2 size={14} />
+                        Remove background
+                      </button>
+                    </div>
+                  )}
+                  {backgroundError && <p className="settings-error" role="alert">{backgroundError}</p>}
                 </div>
-                <label className="settings-upload-button">
-                  <ImagePlus size={16} />
-                  <span>{customBackground ? 'Change' : 'Choose image'}</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleBackgroundUpload}
-                    disabled={isSavingBackground}
-                    aria-label="Choose a custom background image"
-                  />
-                </label>
-              </div>
-              {cropImage && (
-                <div className="background-cropper" role="group" aria-label="Crop custom background">
-                  <div className="background-cropper-heading">
-                    <strong>Adjust your background</strong>
-                    <span>Drag the image to position it.</span>
-                  </div>
-                  <canvas
-                    ref={cropCanvasRef}
-                    className="background-crop-preview"
-                    onPointerDown={handleCropPointerDown}
-                    onPointerMove={handleCropPointerMove}
-                    onPointerUp={handleCropPointerUp}
-                    onPointerCancel={handleCropPointerUp}
-                    aria-label="Drag to position the background crop"
-                  />
-                  <div className="background-crop-controls">
-                    <label>
-                      Width
-                      <input
-                        type="number"
-                        min="320"
-                        max="4096"
-                        value={cropWidth}
-                        onChange={(event) => handleCropDimensionChange('width', event.target.value)}
-                        onBlur={() => handleCropDimensionBlur('width')}
-                      />
-                      <span>px</span>
-                    </label>
-                    <label>
-                      Height
-                      <input
-                        type="number"
-                        min="320"
-                        max="4096"
-                        value={cropHeight}
-                        onChange={(event) => handleCropDimensionChange('height', event.target.value)}
-                        onBlur={() => handleCropDimensionBlur('height')}
-                      />
-                      <span>px</span>
-                    </label>
-                  </div>
-                  <label className="background-crop-zoom">
-                    <span>Zoom</span>
+              ) : settingsSection === 'motion' ? (
+                <div className="settings-section">
+                  <div className="settings-option">
+                    <div>
+                      <strong>Reduce motion</strong>
+                      <p>Minimize animations and transitions across the page.</p>
+                    </div>
                     <input
-                      type="range"
-                      min="1"
-                      max="4"
-                      step="0.01"
-                      value={cropZoom}
-                      onChange={(event) => setCropZoom(Number(event.target.value))}
+                      type="checkbox"
+                      checked={reduceMotion}
+                      onChange={handleReduceMotionChange}
+                      aria-label="Reduce motion"
                     />
-                    <span>{cropZoom.toFixed(1)}×</span>
-                  </label>
-                  <div className="background-crop-actions">
-                    <button type="button" onClick={closeBackgroundCropper} disabled={isSavingBackground}>
-                      Cancel
-                    </button>
-                    <button type="button" onClick={handleSaveBackground} disabled={isSavingBackground}>
-                      {isSavingBackground ? 'Saving…' : 'Save as background'}
-                    </button>
                   </div>
                 </div>
-              )}
-              {customBackground && (
-                <div className="settings-background-preview">
-                  <img src={customBackground} alt="Custom app background preview" />
-                  <button type="button" onClick={handleRemoveBackground}>
-                    <Trash2 size={14} />
-                    Remove background
+              ) : (
+                <div className="settings-menu" role="menu" aria-label="Settings options">
+                  <button type="button" role="menuitem" onClick={() => setSettingsSection('password')}>
+                    <KeyRound size={18} />
+                    <span><strong>Change password</strong><small>Update your account password or request a reset email</small></span>
+                    <ChevronRight size={17} />
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => setSettingsSection('background')}>
+                    <ImagePlus size={18} />
+                    <span><strong>Change background</strong><small>Choose and customize your app background</small></span>
+                    <ChevronRight size={17} />
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => setSettingsSection('motion')}>
+                    <span className="settings-menu-toggle-icon"><Zap size={18} /></span>
+                    <span><strong>Reduce motion</strong><small>Control animations and transitions</small></span>
+                    <ChevronRight size={17} />
                   </button>
                 </div>
-              )}
-              {backgroundError && <p className="settings-error" role="alert">{backgroundError}</p>}
-              <div className="settings-option">
-                <div>
-                  <strong>Reduce motion</strong>
-                  <p>Minimize animations and transitions across the page.</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={reduceMotion}
-                  onChange={handleReduceMotionChange}
-                  aria-label="Reduce motion"
-                />
-              </div>
-            </div>
-            </>
+              )
             )}
           </section>
         </div>
