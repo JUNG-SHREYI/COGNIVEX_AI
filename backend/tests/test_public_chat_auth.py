@@ -30,6 +30,61 @@ class PublicChatAuthTests(unittest.TestCase):
 
         self.assertEqual(error.exception.status_code, 401)
 
+    def test_cognivex_prompt_requires_google_authorization(self):
+        with (
+            patch.object(app, "_require_authenticated_user", return_value={"id": "test-user"}),
+            self.assertRaises(HTTPException) as error,
+        ):
+            app.run_cognivex_prompt(
+                app.CognivexPromptRequest(prompt="hello"),
+                x_google_access_token="",
+                x_google_project_id="",
+                authorization="******",
+            )
+
+        self.assertEqual(error.exception.status_code, 400)
+        self.assertIn("Connect your Google account", error.exception.detail)
+
+    def test_google_authorization_requires_matching_verified_email(self):
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.read.return_value = json.dumps({
+            "email": "different@example.com",
+            "email_verified": True,
+        }).encode("utf-8")
+
+        with (
+            patch.object(app, "urlopen", return_value=response),
+            self.assertRaises(HTTPException) as error,
+        ):
+            app._require_google_access_token(
+                "test-google-token",
+                {"email": "user@example.com"},
+            )
+
+        self.assertEqual(error.exception.status_code, 403)
+
+    def test_google_authorization_accepts_matching_verified_email(self):
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.read.return_value = json.dumps({
+            "email": "User@example.com",
+            "email_verified": True,
+        }).encode("utf-8")
+
+        with patch.object(app, "urlopen", return_value=response):
+            token = app._require_google_access_token(
+                "test-google-token",
+                {"email": "user@example.com"},
+            )
+
+        self.assertEqual(token, "test-google-token")
+
+    def test_google_project_id_must_be_valid(self):
+        with self.assertRaises(HTTPException) as error:
+            app._require_google_project_id("not a project id")
+        self.assertEqual(error.exception.status_code, 400)
+
     def test_authentication_verifies_token_with_supabase(self):
         response = MagicMock()
         response.__enter__.return_value = response

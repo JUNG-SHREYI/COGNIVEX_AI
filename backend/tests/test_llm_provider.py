@@ -71,6 +71,32 @@ class GeminiProviderTests(unittest.TestCase):
         self.assertEqual(mock_post.call_args.args[1]["contents"][0]["role"], "model")
         self.assertEqual(result["usage_metadata"]["totalTokenCount"], 12)
 
+    def test_google_oauth_uses_users_vertex_project_and_bearer_token(self):
+        os.environ["GEMINI_API_KEY"] = "server-key-must-not-be-used"
+        with patch.object(llm_provider, "_post_json", return_value={
+            "candidates": [{
+                "content": {"parts": [{"text": "User project response"}]}
+            }],
+            "usageMetadata": {"totalTokenCount": 8},
+        }) as mock_post:
+            result = llm_provider.generate_with_provider_detailed(
+                "Say hello",
+                gemini_model="gemini-3.8-flash",
+                google_access_token="user-oauth-token",
+                google_project_id="user-cloud-project",
+            )
+
+        self.assertEqual(result["content"], "User project response")
+        self.assertIn(
+            "/projects/user-cloud-project/locations/global/publishers/google/models/gemini-3.8-flash:generateContent",
+            mock_post.call_args.args[0],
+        )
+        self.assertEqual(
+            mock_post.call_args.args[2]["Authorization"],
+            "Bearer user-oauth-token",
+        )
+        self.assertNotIn("x-goog-api-key", mock_post.call_args.args[2])
+
     def test_selected_gemini_model_overrides_configured_provider_and_model(self):
         os.environ.update({
             "LLM_PROVIDER": "groq",

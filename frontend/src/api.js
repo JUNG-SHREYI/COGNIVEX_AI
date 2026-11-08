@@ -8,10 +8,12 @@ const API_BASE = configuredApiBase.endsWith('/api')
   ? configuredApiBase
   : `${configuredApiBase}/api`;
 
-function chatHeaders(accessToken, includeContentType = false) {
+function chatHeaders(accessToken, includeContentType = false, googleAccessToken, googleProjectId) {
   const headers = {};
   if (includeContentType) headers['Content-Type'] = 'application/json';
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  if (googleAccessToken) headers['X-Google-Access-Token'] = googleAccessToken;
+  if (googleProjectId) headers['X-Google-Project-ID'] = googleProjectId;
   return headers;
 }
 
@@ -80,11 +82,13 @@ export async function promptCognivex(
   accessToken,
   chatId,
   title,
-  geminiModel
+  geminiModel,
+  googleAccessToken,
+  googleProjectId
 ) {
   const res = await fetch(`${API_BASE}/cognivex/prompt`, {
     method: 'POST',
-    headers: chatHeaders(accessToken, true),
+    headers: chatHeaders(accessToken, true, googleAccessToken, googleProjectId),
     body: JSON.stringify({
       prompt,
       max_tokens: maxTokens,
@@ -97,10 +101,19 @@ export async function promptCognivex(
   return readChatResponse(res, 'Cognivex could not respond.');
 }
 
-export async function promptDsaTutor(prompt, sessionId = 'default', accessToken, chatId, title, geminiModel) {
+export async function promptDsaTutor(
+  prompt,
+  sessionId = 'default',
+  accessToken,
+  chatId,
+  title,
+  geminiModel,
+  googleAccessToken,
+  googleProjectId
+) {
   const res = await fetch(`${API_BASE}/dsa-tutor/prompt`, {
     method: 'POST',
-    headers: chatHeaders(accessToken, true),
+    headers: chatHeaders(accessToken, true, googleAccessToken, googleProjectId),
     body: JSON.stringify({
       prompt,
       session_id: sessionId,

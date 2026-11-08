@@ -4,7 +4,9 @@ import CustomDomainModal from './components/CustomDomainModal';
 import AuthPage from './components/AuthPage';
 import LandingPage from './components/LandingPage';
 import AdminPage from './components/AdminPage';
+import GoogleAiSettings from './components/GoogleAiSettings';
 import PasswordSettings from './components/PasswordSettings';
+import { getUserGoogleProjectId } from './auth/googleAi';
 import { supabase } from './supabaseClient';
 import {
   createChatSession,
@@ -180,7 +182,8 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState(null);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
-  const [appTheme] = useState(() => {
+  const [googleAuthorization, setGoogleAuthorization] = useState(null);
+  const [appTheme, setAppTheme] = useState(() => {
     const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
     return APP_THEMES.some((theme) => theme.id === savedTheme) ? savedTheme : 'midnight';
   });
@@ -210,6 +213,15 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.appTheme = appTheme;
   }, [appTheme]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    try {
+      window.localStorage.removeItem(`cognivex.geminiApiKey.${user.id}`);
+    } catch (error) {
+      console.error('Failed to clear the retired Gemini API key setting:', error);
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     const handleResize = () => setSidebarWidth((width) => clampSidebarWidth(width));
@@ -285,9 +297,11 @@ export default function App() {
         setSettingsSection('password');
       }
       if (event === 'SIGNED_OUT') {
+        setGoogleAuthorization(null);
         setIsPasswordRecovery(false);
         setSettingsSection(null);
       }
+      if (event === 'SIGNED_IN') setGoogleAuthorization(null);
       setAuthLoading(false);
     });
     return () => listener.subscription.unsubscribe();
@@ -448,6 +462,29 @@ export default function App() {
   const sendMessage = async (value = prompt, mode = assistantMode) => {
     const text = value.trim();
     if (!text || isSending || chatSessionsLoading || historyLoading) return;
+    let googleProjectId;
+    try {
+      googleProjectId = getUserGoogleProjectId(sessionId);
+    } catch (error) {
+      console.error('Failed to access the signed-in user Google Cloud project ID:', error);
+      setMessages((current) => [...current, {
+        role: 'assistant',
+        content: 'Browser storage is unavailable. Enable it and connect your Google account in Settings.'
+      }]);
+      setIsSettingsOpen(true);
+      setSettingsSection('google-ai');
+      return;
+    }
+    if (!googleAuthorization?.accessToken || googleAuthorization.expiresAt <= Date.now() || !googleProjectId) {
+      setMessages((current) => [...current, {
+        role: 'assistant',
+        content: 'Connect your Google account and save your Google Cloud Project ID in Settings before chatting.'
+      }]);
+      setIsSettingsOpen(true);
+      setSettingsSection('google-ai');
+      return;
+    }
+
     let chatId = activeChatId;
     if (!chatId || chatId.startsWith('draft-')) {
       try {
@@ -485,8 +522,27 @@ export default function App() {
 
     try {
       const res = mode === 'dsa-tutor'
-        ? await promptDsaTutor(text, sessionId, accessToken, chatId, chatTitle, selectedGeminiModel)
-        : await promptCognivex(request, 200, sessionId, accessToken, chatId, chatTitle, selectedGeminiModel);
+        ? await promptDsaTutor(
+          text,
+          sessionId,
+          accessToken,
+          chatId,
+          chatTitle,
+          selectedGeminiModel,
+          googleAuthorization.accessToken,
+          googleProjectId
+        )
+        : await promptCognivex(
+          request,
+          200,
+          sessionId,
+          accessToken,
+          chatId,
+          chatTitle,
+          selectedGeminiModel,
+          googleAuthorization.accessToken,
+          googleProjectId
+        );
       const response =
         res.generated_text ||
         res.response ||
@@ -671,6 +727,20 @@ export default function App() {
     setSelectedGeminiModel(model);
   };
 
+  const handleAppThemeChange = (themeId) => {
+    if (!APP_THEMES.some((theme) => theme.id === themeId)) return;
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, themeId);
+      window.localStorage.removeItem(BACKGROUND_STORAGE_KEY);
+      setAppTheme(themeId);
+      setCustomBackground('');
+      setBackgroundError('');
+    } catch (error) {
+      console.error('Failed to save app theme:', error);
+      setBackgroundError('The selected theme could not be saved in browser storage.');
+    }
+  };
+
   const handleBackgroundUpload = async (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -842,6 +912,7 @@ export default function App() {
 
   const handleSignOut = async () => {
     await supabase?.auth.signOut();
+    setGoogleAuthorization(null);
     setUser(null);
     setAccessToken(null);
     setMessages([]);
@@ -1342,9 +1413,11 @@ export default function App() {
                       ? 'Change password'
                       : settingsSection === 'background'
                         ? 'Change background'
-                        : settingsSection === 'motion'
-                          ? 'Reduce motion'
-                          : 'Settings'}
+                        : settingsSection === 'google-ai'
+                          ? 'Connect Google account'
+                          : settingsSection === 'motion'
+                            ? 'Reduce motion'
+                            : 'Settings'}
                 </h2>
               </div>
               {!isPasswordRecovery && (
@@ -1382,16 +1455,50 @@ export default function App() {
             ) : (
               settingsSection === 'password' ? (
                 <PasswordSettings user={user} />
+              ) : settingsSection === 'google-ai' ? (
+                <GoogleAiSettings
+                  key={user.id}
+                  user={user}
+                  authorization={googleAuthorization}
+                  onAuthorizationChange={setGoogleAuthorization}
+                />
               ) : settingsSection === 'background' ? (
                 <div className="settings-section">
+                  <section className="settings-theme-section" aria-labelledby="background-theme-heading">
+                    <div className="settings-subsection-heading">
+                      <h3 id="background-theme-heading">Default themes</h3>
+                      <p>Pick a look for your workspace, or use your own image below.</p>
+                    </div>
+                    <div className="settings-theme-grid">
+                      {APP_THEMES.map((theme) => {
+                        const isSelected = !customBackground && appTheme === theme.id;
+                        return (
+                          <button
+                            key={theme.id}
+                            type="button"
+                            className={`settings-theme-card${isSelected ? ' selected' : ''}`}
+                            onClick={() => handleAppThemeChange(theme.id)}
+                            aria-pressed={isSelected}
+                          >
+                            <span
+                              className={`settings-theme-preview settings-theme-preview-${theme.id}`}
+                              aria-hidden="true"
+                            />
+                            <span className="settings-theme-label">{theme.label}</span>
+                            {isSelected && <span className="settings-theme-selected">Selected</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
                   <div className="settings-option settings-background-option">
                     <div>
-                      <strong>Custom background</strong>
-                      <p>Choose an image, adjust its crop and dimensions, then save it across the app.</p>
+                      <strong>Use your own image</strong>
+                      <p>Prefer a personal background? Choose an image and adjust its crop before saving.</p>
                     </div>
                     <label className="settings-upload-button">
                       <ImagePlus size={16} />
-                      <span>{customBackground ? 'Change' : 'Choose image'}</span>
+                      <span>{customBackground ? 'Change image' : 'Choose image'}</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -1500,6 +1607,11 @@ export default function App() {
                   <button type="button" role="menuitem" onClick={() => setSettingsSection('background')}>
                     <ImagePlus size={18} />
                     <span><strong>Change background</strong><small>Choose and customize your app background</small></span>
+                    <ChevronRight size={17} />
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => setSettingsSection('google-ai')}>
+                    <KeyRound size={18} />
+                    <span><strong>Connect Google account</strong><small>Use your Google Cloud project for Gemini</small></span>
                     <ChevronRight size={17} />
                   </button>
                   <button type="button" role="menuitem" onClick={() => setSettingsSection('motion')}>

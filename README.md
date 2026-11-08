@@ -37,11 +37,6 @@ pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requiremen
 Create `backend/.env` locally. Never commit this file:
 
 ```env
-# Use Google AI Studio Gemini; OpenAI is not used
-LLM_PROVIDER=gemini
-GEMINI_API_KEY=your-google-ai-studio-api-key
-GEMINI_MODEL=gemini-3.1-flash-lite
-
 # Or use Ollama locally:
 # LLM_PROVIDER=ollama
 # OLLAMA_MODEL=llama3.2:3b
@@ -62,9 +57,11 @@ For Ollama:
 ollama pull llama3.2:3b
 ```
 
-The backend sends conversation history and optional web context to Gemini.
-The API key stays in `backend/.env` and is never sent to the frontend. OpenAI
-API calls are disabled.
+Signed-in users connect the same Google account as their Cognivex email and
+provide their Google Cloud Project ID in Settings. Chat uses their temporary
+Google OAuth access token with Vertex AI; Cognivex does not collect or store a
+Gemini API key. The user project must have billing and the Vertex AI API enabled,
+and grant that Google account the Vertex AI User role.
 
 Run the API:
 
@@ -114,33 +111,37 @@ npm run dev
 
 The frontend runs at the Vite URL shown in the terminal, usually `http://127.0.0.1:5173`.
 Choose **DSA AI Tutor** above the chat composer to send DSA questions to Gemini.
-General chat also uses Gemini; keep `GEMINI_API_KEY` in `backend/.env`, never in
-frontend configuration.
+Before chatting, use **Settings → Connect Google account** to authorize Vertex AI
+and save your Google Cloud Project ID. The OAuth token is held only in memory and
+must be renewed after it expires or the app is reloaded.
 
 ## Public Deployment
 
 The app is configured for a Vercel frontend and a Render FastAPI service. Both
 services are created from the GitHub repository; Render uses [render.yaml](render.yaml).
 
-1. In Render, create a Blueprint from this repository's `main` branch. Choose
-   the free plan and enter the requested `GEMINI_API_KEY` and
-   `SUPABASE_PUBLISHABLE_KEY` in Render's environment-variable prompts. Render
-   provides the API URL after deployment.
-2. In Vercel, import this repository and set the project root to the repository
+1. In Google Cloud, create a Web OAuth client ID for Cognivex, configure its
+   consent screen for `openid`, `email`, and the Cloud Platform scope, and add
+   your local and deployed frontend origins as authorized JavaScript origins.
+   The Cloud Platform scope may require Google verification before public use.
+2. In Render, create a Blueprint from this repository's `main` branch. Choose
+   the free plan and enter the `SUPABASE_PUBLISHABLE_KEY` in Render's
+   environment-variable prompts. Render provides the API URL after deployment.
+3. In Vercel, import this repository and set the project root to the repository
    root (`.`). The root [vercel.json](vercel.json) builds only the Vite frontend;
    `.vercelignore` excludes the Python backend from Vercel's build and dependency
    detection. Set `VITE_API_BASE_URL` to the Render API origin (without `/api`),
    `VITE_SUPABASE_URL` to the Supabase project URL, and
-   `VITE_SUPABASE_PUBLISHABLE_KEY` to the project's publishable key. These
-   frontend variables are public; never use a Supabase secret/service-role key.
-3. After Vercel provides the site URL, set Render's `CORS_ORIGINS` to that
+   `VITE_SUPABASE_PUBLISHABLE_KEY` to the project's publishable key, and
+   `VITE_GOOGLE_OAUTH_CLIENT_ID` to the Web OAuth client ID. These frontend
+   variables are public; never use a Supabase secret/service-role key.
+4. After Vercel provides the site URL, add it to the Google OAuth client's
+   authorized JavaScript origins. Set Render's `CORS_ORIGINS` to that
    origin only (for example, `https://your-app.vercel.app`) and redeploy the
    API. Update Supabase Authentication's Site URL and redirect allowlist to
    include the Vercel URL.
-4. Keep Gemini and any Supabase secret keys exclusively in the backend host's
-   environment variables. Do not commit them or enter them into frontend
-   settings. Configure custom SMTP and review Supabase Auth rate limits before
-   promoting public sign-up to a large audience.
+5. Configure custom SMTP and review Supabase Auth rate limits before promoting
+   public sign-up to a large audience.
 
 The free Render API can spin down while idle, and Supabase may pause a Free Plan
 project after 7 days of low activity. The first request after a Render spin-down
@@ -151,9 +152,8 @@ Upgrade either service if continuous availability is required.
 
 The imported standalone tutor lives in [dsa-ai-tutor](dsa-ai-tutor/). Follow its
 [setup instructions](dsa-ai-tutor/README.md) to create its virtual environment
-and install dependencies. To use it in the frontend, configure `GEMINI_API_KEY`
-in `backend/.env`. To run the standalone command-line version, add the key to
-`dsa-ai-tutor/.env` and run it from that folder with:
+and install dependencies. To run the standalone command-line version, add a
+Gemini API key to `dsa-ai-tutor/.env` and run it from that folder with:
 
 ```powershell
 python main.py

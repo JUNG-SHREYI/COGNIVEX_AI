@@ -6,6 +6,7 @@ Orchestrates Perception, Understanding, Knowledge, Cognivex Neural Engine, Decis
 import os
 import sys
 import json
+import re
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 import uvicorn
@@ -52,7 +53,6 @@ from cognivex_ai.llm_provider import (
     generate_with_provider_detailed,
     test_llm_connection,
 )
-from cognivex_ai.response_engine import generate_intelligent_response
 from cognivex_ai.web_search import format_sources, search_web
 from cognivex_ai.weights import CAUSAL_CLASSES, ACTION_CLASSES
 from domains.manager import DomainManager
@@ -187,6 +187,55 @@ def _chat_access_token(authorization: Optional[str]) -> Optional[str]:
     if scheme.lower() != "bearer" or not separator or not token.strip():
         raise HTTPException(status_code=401, detail="Invalid Authorization header")
     return token.strip()
+
+
+def _require_google_access_token(access_token: Optional[str], user: Dict[str, Any]) -> str:
+    token = (access_token or "").strip()
+    if not token:
+        raise HTTPException(
+            status_code=400,
+            detail="Connect your Google account in Settings before sending a chat message.",
+        )
+    if len(token) > 8192:
+        raise HTTPException(status_code=400, detail="The Google access token is too long.")
+
+    request = Request(
+        "https://openidconnect.googleapis.com/v1/userinfo",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    try:
+        with urlopen(request, timeout=10) as response:
+            google_user = json.loads(response.read().decode("utf-8"))
+    except HTTPError as error:
+        if error.code in {401, 403}:
+            raise HTTPException(
+                status_code=401,
+                detail="Google authorization expired. Reconnect your Google account.",
+            ) from error
+        raise HTTPException(status_code=503, detail="Unable to verify your Google account right now.") from error
+    except (URLError, TimeoutError, OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise HTTPException(status_code=503, detail="Unable to verify your Google account right now.") from error
+
+    google_email = google_user.get("email") if isinstance(google_user, dict) else None
+    auth_email = user.get("email")
+    if (
+        not isinstance(google_email, str)
+        or google_user.get("email_verified") is not True
+        or not isinstance(auth_email, str)
+        or google_email.strip().lower() != auth_email.strip().lower()
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Connect the Google account that uses the same verified email as your Cognivex account.",
+        )
+    return token
+
+
+def _require_google_project_id(project_id: Optional[str]) -> str:
+    value = (project_id or "").strip()
+    if not re.fullmatch(r"[a-z][a-z0-9-]{4,28}[a-z0-9]", value):
+        raise HTTPException(status_code=400, detail="Enter a valid Google Cloud Project ID in Settings.")
+    return value
 
 
 def _raise_chat_history_error(error: RuntimeError) -> NoReturn:
@@ -346,30 +395,33 @@ def get_model_info():
     }
 
 @app.post("/api/chat")
-def chat_endpoint(req: CognivexPromptRequest, authorization: Optional[str] = Header(default=None)):
-    return run_cognivex_prompt(req, authorization)
+def chat_endpoint(
+    req: CognivexPromptRequest,
+    authorization: Optional[str] = Header(default=None),
+    x_google_access_token: Optional[str] = Header(default=None, alias="X-Google-Access-Token"),
+    x_google_project_id: Optional[str] = Header(default=None, alias="X-Google-Project-ID"),
+):
+    return run_cognivex_prompt(req, authorization, x_google_access_token, x_google_project_id)
 
 
 @app.post("/api/dsa-tutor/prompt")
 def run_dsa_tutor_prompt(
     req: DsaTutorPromptRequest,
     authorization: Optional[str] = Header(default=None),
+    x_google_access_token: Optional[str] = Header(default=None, alias="X-Google-Access-Token"),
+    x_google_project_id: Optional[str] = Header(default=None, alias="X-Google-Project-ID"),
 ):
-    _require_authenticated_user(authorization)
+    user = _require_authenticated_user(authorization)
+    google_access_token = _require_google_access_token(x_google_access_token, user)
+    google_project_id = _require_google_project_id(x_google_project_id)
     selected_model = _validate_gemini_model(req.gemini_model)
-    api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    if not api_key:
-        raise HTTPException(
-            status_code=503,
-            detail="The DSA tutor is not configured. Set GEMINI_API_KEY in backend/.env.",
-        )
 
     session_id = req.session_id or "default"
     access_token = _chat_access_token(authorization)
     conversation = [
         {
-            "role": "model" if message.get("role") == "assistant" else "user",
-            "parts": [{"text": message.get("content", "")}],
+            "role": message.get("role", ""),
+            "content": message.get("content", ""),
         }
         for message in _get_chat_history(
             session_id,
@@ -381,50 +433,34 @@ def run_dsa_tutor_prompt(
         and message.get("role") in {"user", "assistant"}
         and message.get("content")
     ]
-    conversation.append({"role": "user", "parts": [{"text": req.prompt}]})
-
     model = selected_model or os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite").strip()
-    request = Request(
-        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-        data=json.dumps({
-            "systemInstruction": {
-                "parts": [{
-                    "text": (
-                        "You are a friendly Data Structures and Algorithms tutor. "
-                        "Explain concepts clearly with examples, analogies, and code "
-                        "when useful. Help the student understand the reasoning."
-                    )
-                }]
-            },
-            "contents": conversation,
-            "generationConfig": {"temperature": 0.4, "maxOutputTokens": 1024},
-        }).encode("utf-8"),
-        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
-        method="POST",
+    provider_result = generate_with_provider_detailed(
+        req.prompt,
+        max_tokens=1024,
+        conversation=conversation,
+        gemini_model=model,
+        google_access_token=google_access_token,
+        google_project_id=google_project_id,
+        system_instruction=(
+            "You are a friendly Data Structures and Algorithms tutor. "
+            "Explain concepts clearly with examples, analogies, and code "
+            "when useful. Help the student understand the reasoning."
+        ),
+        temperature=0.4,
     )
-
-    try:
-        with urlopen(request, timeout=45) as response:
-            result = json.loads(response.read().decode("utf-8"))
-    except HTTPError as error:
-        try:
-            error_body = json.loads(error.read().decode("utf-8"))
-            detail = error_body.get("error", {}).get("message", "Gemini request failed.")
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            detail = "Gemini request failed."
-        raise HTTPException(status_code=502, detail=f"Gemini request failed: {detail}") from error
-    except (URLError, TimeoutError, OSError) as error:
-        raise HTTPException(status_code=502, detail="Unable to reach the Gemini API.") from error
-    except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise HTTPException(status_code=502, detail="Gemini returned an invalid response.") from error
-
-    candidates = result.get("candidates") or []
-    parts = candidates[0].get("content", {}).get("parts", []) if candidates else []
-    generated = "\n".join(part["text"] for part in parts if part.get("text")).strip()
+    generated = provider_result.get("content")
     if not generated:
-        raise HTTPException(status_code=502, detail="Gemini returned no response text.")
+        status = {
+            "unauthorized": 401,
+            "permission_denied": 403,
+            "quota_exhausted": 429,
+        }.get(provider_result.get("status"), 502)
+        raise HTTPException(
+            status_code=status,
+            detail=f"Gemini request failed: {provider_result.get('error') or provider_result.get('status')}.",
+        )
 
-    usage = result.get("usageMetadata") or {}
+    usage = provider_result.get("usage_metadata") or {}
     try:
         save_exchange(
             session_id=session_id,
@@ -442,7 +478,7 @@ def run_dsa_tutor_prompt(
     return {
         "generated_text": generated,
         "provider_used": "gemini-dsa-tutor",
-        "provider_model": model,
+        "provider_model": provider_result.get("model", model),
         "usage_metadata": usage,
     }
 
@@ -451,8 +487,12 @@ def run_dsa_tutor_prompt(
 def run_cognivex_prompt(
     req: CognivexPromptRequest,
     authorization: Optional[str] = Header(default=None),
+    x_google_access_token: Optional[str] = Header(default=None, alias="X-Google-Access-Token"),
+    x_google_project_id: Optional[str] = Header(default=None, alias="X-Google-Project-ID"),
 ):
-    _require_authenticated_user(authorization)
+    user = _require_authenticated_user(authorization)
+    google_access_token = _require_google_access_token(x_google_access_token, user)
+    google_project_id = _require_google_project_id(x_google_project_id)
     max_tokens = req.max_tokens or 200
     selected_model = _validate_gemini_model(req.gemini_model)
     provider_config = os.getenv("LLM_PROVIDER", "local")
@@ -478,29 +518,23 @@ def run_cognivex_prompt(
         web_context=web_context,
         conversation=conversation,
         gemini_model=selected_model,
+        google_access_token=google_access_token,
+        google_project_id=google_project_id,
     )
     generated = provider_result.get("content")
     provider_used = provider_result.get("provider", provider_config)
     provider_status = provider_result.get("status", "ok")
-    if selected_model and not generated:
-        status_code = (
-            429 if provider_status == "quota_exhausted"
-            else 503 if provider_status == "missing_key"
-            else 502
-        )
+    if not generated:
+        status_code = {
+            "unauthorized": 401,
+            "permission_denied": 403,
+            "quota_exhausted": 429,
+            "missing_project": 400,
+        }.get(provider_status, 502)
         raise HTTPException(
             status_code=status_code,
             detail=(
-                f"Selected Gemini model {selected_model} is unavailable: "
-                f"{provider_result.get('error') or provider_status}."
-            ),
-        )
-    if selected_model and not generated:
-        status_code = 429 if provider_status == "quota_exhausted" else 503 if provider_status == "missing_key" else 502
-        raise HTTPException(
-            status_code=status_code,
-            detail=(
-                f"Selected Gemini model {selected_model} is unavailable: "
+                f"Gemini model {selected_model or provider_result.get('model', 'selected')} is unavailable: "
                 f"{provider_result.get('error') or provider_status}."
             ),
         )
@@ -508,39 +542,7 @@ def run_cognivex_prompt(
         "GEMINI_MODEL" if provider_used == "gemini" else "LLM_MODEL",
         "gemini-3.1-flash-lite" if provider_used == "gemini" else "gpt-4o-mini",
     )
-    provider_notice = None
-
-    # ── 2. Fall back to Cognivex intelligent response engine ─────────────────
-    if not generated:
-        if provider_status == "quota_exhausted":
-            provider_notice = {
-                "type": "quota_exhausted",
-                "message": f"{provider_used.capitalize()} quota is exhausted. Check your provider usage. Response generated by Cognivex Multi-Domain Neural Engine.",
-                "usage_url": provider_result.get("usage_url", "https://aistudio.google.com/apikey"),
-            }
-        elif provider_status in ("missing_key", "invalid_key", "error", "network_error") or provider_status.startswith("http_"):
-            provider_name = provider_used.capitalize() if provider_used not in {"auto", "local"} else "External AI"
-            provider_notice = {
-                "type": provider_status,
-                "message": f"{provider_name} is unavailable ({provider_result.get('error') or provider_status}). Response generated by the local Cognivex Neural Engine.",
-                "usage_url": provider_result.get("usage_url") or "https://aistudio.google.com/apikey"
-            }
-
-        # Extract domain from session context prefix e.g. "Domain: village\n..."
-        domain = None
-        for line in req.prompt.splitlines()[:3]:
-            if line.lower().startswith("domain:"):
-                domain = line.split(":", 1)[1].strip().lower().split()[0]
-                break
-        generated = generate_intelligent_response(
-            prompt=req.prompt,
-            domain=domain,
-            engine=cognivex,
-            max_tokens=max_tokens,
-        )
-        provider_used = "cognivex-local"
-
-    # ── 3. Persist to Supabase / local fallback ──────────────────────────────
+    # ── 2. Persist to Supabase ───────────────────────────────────────────────
     try:
         save_exchange(
             session_id=req.session_id or "default",
@@ -556,7 +558,7 @@ def run_cognivex_prompt(
     except RuntimeError as error:
         _raise_chat_history_error(error)
 
-    # ── 4. Cognivex neural classification heads for sidebar analytics ─────────
+    # ── 3. Cognivex neural classification heads for sidebar analytics ────────
     import torch
     token_ids = cognivex.tokenizer.encode(req.prompt, add_special_tokens=True, max_length=32)
     with torch.no_grad():
@@ -579,7 +581,6 @@ def run_cognivex_prompt(
         "provider_status": provider_status,
         "provider_model": provider_model,
         "usage_metadata": provider_result.get("usage_metadata"),
-        "provider_notice": provider_notice,
     }
 
 @app.get("/api/chat/sessions")

@@ -305,6 +305,10 @@ def generate_with_provider_detailed(
     web_context: str = "",
     conversation: Optional[List[Dict[str, str]]] = None,
     gemini_model: Optional[str] = None,
+    google_access_token: Optional[str] = None,
+    google_project_id: Optional[str] = None,
+    system_instruction: str = SYSTEM_PROMPT,
+    temperature: float = 0.2,
 ) -> dict:
     """Return provider generation result with diagnostics."""
     provider = os.getenv("LLM_PROVIDER", "auto").strip().lower()
@@ -316,7 +320,7 @@ def generate_with_provider_detailed(
             "status": "invalid_model",
             "error": "The selected Gemini model is not supported.",
         }
-    if gemini_model:
+    if gemini_model or google_access_token:
         provider = "gemini"
     elif provider in {"", "local", "none"}:
         return {"content": None, "provider": "local", "status": "disabled", "error": None}
@@ -361,7 +365,7 @@ def generate_with_provider_detailed(
     if web_context:
         user_message = f"{prompt}\n\nWEB SEARCH CONTEXT:\n{web_context}"
 
-    messages: List[Dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
+    messages: List[Dict[str, str]] = [{"role": "system", "content": system_instruction}]
     for message in conversation or []:
         role = message.get("role")
         content = message.get("content")
@@ -370,16 +374,25 @@ def generate_with_provider_detailed(
     messages.append({"role": "user", "content": user_message})
 
     if provider == "gemini":
-        api_key = _get_gemini_key()
+        api_key = _get_gemini_key() if not google_access_token else ""
         if not api_key:
-            return {
-                "content": None,
-                "provider": "gemini",
-                "model": model,
-                "status": "missing_key",
-                "error": "Gemini API key not configured. Set GEMINI_API_KEY in backend/.env.",
-                "usage_url": "https://aistudio.google.com/apikey",
-            }
+            if not google_access_token:
+                return {
+                    "content": None,
+                    "provider": "gemini",
+                    "model": model,
+                    "status": "missing_key",
+                    "error": "Gemini API key not configured. Set GEMINI_API_KEY in backend/.env.",
+                    "usage_url": "https://aistudio.google.com/apikey",
+                }
+            if not google_project_id:
+                return {
+                    "content": None,
+                    "provider": "gemini",
+                    "model": model,
+                    "status": "missing_project",
+                    "error": "Google Cloud Project ID is required for Vertex AI.",
+                }
 
         contents = [
             {
@@ -389,20 +402,28 @@ def generate_with_provider_detailed(
             for message in messages[1:]
         ]
         payload = {
-            "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+            "systemInstruction": {"parts": [{"text": system_instruction}]},
             "contents": contents,
             "generationConfig": {
                 "maxOutputTokens": max_tokens,
-                "temperature": 0.2,
+                "temperature": temperature,
             },
         }
-        try:
-            result = _post_json(
-                f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-                payload,
-                {"x-goog-api-key": api_key},
-                timeout,
+        if google_access_token:
+            request_url = (
+                "https://aiplatform.googleapis.com/v1/"
+                f"projects/{google_project_id}/locations/global/"
+                f"publishers/google/models/{model}:generateContent"
             )
+            request_headers = {"Authorization": f"Bearer {google_access_token}"}
+        else:
+            request_url = (
+                "https://generativelanguage.googleapis.com/v1beta/"
+                f"models/{model}:generateContent"
+            )
+            request_headers = {"x-goog-api-key": api_key}
+        try:
+            result = _post_json(request_url, payload, request_headers, timeout)
             candidates = result.get("candidates") or []
             parts = candidates[0].get("content", {}).get("parts", []) if candidates else []
             content = "\n".join(part["text"] for part in parts if part.get("text")).strip()
@@ -429,13 +450,20 @@ def generate_with_provider_detailed(
                 error_message = error_body.get("error", {}).get("message", str(err))
             except (UnicodeDecodeError, json.JSONDecodeError):
                 error_message = str(err)
+            error_status = (
+                "unauthorized" if google_access_token and err.code == 401
+                else "permission_denied" if google_access_token and err.code == 403
+                else "invalid_key" if err.code in (401, 403)
+                else "quota_exhausted" if err.code == 429
+                else f"http_{err.code}"
+            )
             return {
                 "content": None,
                 "provider": "gemini",
                 "model": model,
-                "status": "invalid_key" if err.code in (401, 403) else "quota_exhausted" if err.code == 429 else f"http_{err.code}",
+                "status": error_status,
                 "error": error_message,
-                "usage_url": "https://aistudio.google.com/apikey",
+                "usage_url": "https://console.cloud.google.com/vertex-ai",
             }
         except (URLError, TimeoutError, OSError, ValueError) as exc:
             return {
@@ -444,7 +472,6 @@ def generate_with_provider_detailed(
                 "model": model,
                 "status": "network_error",
                 "error": str(exc),
-                "usage_url": "https://aistudio.google.com/apikey",
             }
 
     if provider == "ollama":
