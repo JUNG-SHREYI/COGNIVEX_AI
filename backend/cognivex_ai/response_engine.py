@@ -245,7 +245,7 @@ It combines conversational answers with domain context, internet search, causal 
 4. What should we do?
 5. Why is that recommendation useful?
 
-You can ask about agriculture, education, manufacturing, healthcare, smart cities, or a custom domain. Responses can use the local Cognivex engine or an optional OpenAI/Ollama provider."""
+You can ask about agriculture, education, manufacturing, healthcare, smart cities, or a custom domain. Responses use Google Gemini when configured, with the local Cognivex engine as a fallback."""
     }
 }
 

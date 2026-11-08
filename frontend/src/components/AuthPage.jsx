@@ -29,7 +29,7 @@ export default function AuthPage({ onAuthenticated }) {
         });
         if (error) throw error;
         if (data.session) {
-          onAuthenticated(data.session.user);
+          onAuthenticated(data.session.user, data.session.access_token);
         } else {
           setMessage('Account created. Check your email to confirm your account, then sign in.');
           setMode('signin');
@@ -40,7 +40,7 @@ export default function AuthPage({ onAuthenticated }) {
           password
         });
         if (error) throw error;
-        onAuthenticated(data.user);
+        onAuthenticated(data.user, data.session.access_token);
       }
     } catch (error) {
       setMessage(error.message || 'Authentication failed. Please try again.');

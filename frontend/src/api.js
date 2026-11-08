@@ -4,6 +4,19 @@
 
 const API_BASE = 'http://127.0.0.1:8000/api';
 
+function chatHeaders(accessToken, includeContentType = false) {
+  const headers = {};
+  if (includeContentType) headers['Content-Type'] = 'application/json';
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  return headers;
+}
+
+async function readChatResponse(response, fallbackMessage) {
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.detail || fallbackMessage);
+  return data;
+}
+
 export async function getHealth() {
   const res = await fetch(`${API_BASE}/health`);
   return res.json();
@@ -56,23 +69,94 @@ export async function getModelInfo() {
   return res.json();
 }
 
-export async function promptCognivex(prompt, maxTokens = 35, sessionId = 'default') {
+export async function promptCognivex(
+  prompt,
+  maxTokens = 35,
+  sessionId = 'default',
+  accessToken,
+  chatId,
+  title,
+  geminiModel
+) {
   const res = await fetch(`${API_BASE}/cognivex/prompt`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, max_tokens: maxTokens, session_id: sessionId })
+    headers: chatHeaders(accessToken, true),
+    body: JSON.stringify({
+      prompt,
+      max_tokens: maxTokens,
+      session_id: sessionId,
+      chat_id: chatId,
+      title,
+      gemini_model: geminiModel
+    })
   });
-  return res.json();
+  return readChatResponse(res, 'Cognivex could not respond.');
 }
 
-export async function getChatHistory(sessionId) {
-  const res = await fetch(`${API_BASE}/chat/history/${encodeURIComponent(sessionId)}`);
-  return res.json();
+export async function promptDsaTutor(prompt, sessionId = 'default', accessToken, chatId, title, geminiModel) {
+  const res = await fetch(`${API_BASE}/dsa-tutor/prompt`, {
+    method: 'POST',
+    headers: chatHeaders(accessToken, true),
+    body: JSON.stringify({
+      prompt,
+      session_id: sessionId,
+      chat_id: chatId,
+      title,
+      gemini_model: geminiModel
+    })
+  });
+  return readChatResponse(res, 'The DSA tutor could not respond.');
 }
 
-export async function clearChatHistory(sessionId) {
-  const res = await fetch(`${API_BASE}/chat/history/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
-  return res.json();
+export async function getChatSessions(sessionId, accessToken) {
+  const res = await fetch(
+    `${API_BASE}/chat/sessions?session_id=${encodeURIComponent(sessionId)}`,
+    { headers: chatHeaders(accessToken) }
+  );
+  return readChatResponse(res, 'Chat list could not be loaded.');
+}
+
+export async function createChatSession(sessionId, accessToken) {
+  const res = await fetch(`${API_BASE}/chat/sessions`, {
+    method: 'POST',
+    headers: chatHeaders(accessToken, true),
+    body: JSON.stringify({ session_id: sessionId })
+  });
+  return readChatResponse(res, 'A new chat could not be created.');
+}
+
+export async function deleteChatSession(sessionId, chatId, accessToken) {
+  const res = await fetch(
+    `${API_BASE}/chat/sessions/${encodeURIComponent(chatId)}?session_id=${encodeURIComponent(sessionId)}`,
+    { method: 'DELETE', headers: chatHeaders(accessToken) }
+  );
+  return readChatResponse(res, 'Chat could not be deleted.');
+}
+
+export async function deleteAllChatSessions(sessionId, accessToken) {
+  const res = await fetch(
+    `${API_BASE}/chat/sessions?session_id=${encodeURIComponent(sessionId)}`,
+    { method: 'DELETE', headers: chatHeaders(accessToken) }
+  );
+  return readChatResponse(res, 'Chat history could not be deleted.');
+}
+
+export async function getChatHistory(sessionId, chatId, accessToken) {
+  const res = await fetch(
+    `${API_BASE}/chat/history/${encodeURIComponent(chatId)}?session_id=${encodeURIComponent(sessionId)}`,
+    {
+    headers: chatHeaders(accessToken)
+    }
+  );
+  return readChatResponse(res, 'Chat history could not be loaded.');
+}
+
+export async function clearChatHistory(sessionId, chatId, accessToken) {
+  const res = await fetch(
+    `${API_BASE}/chat/history/${encodeURIComponent(chatId)}?session_id=${encodeURIComponent(sessionId)}`,
+    { method: 'DELETE', headers: chatHeaders(accessToken) }
+  );
+  return readChatResponse(res, 'Chat history could not be cleared.');
 }
 
 export async function getAdminOverview(accessToken) {
@@ -106,4 +190,3 @@ export async function getIntegrationsStatus() {
   const res = await fetch(`${API_BASE}/integrations/status`);
   return res.json();
 }
-
