@@ -4,6 +4,7 @@ import CustomDomainModal from './components/CustomDomainModal';
 import AuthPage from './components/AuthPage';
 import LandingPage from './components/LandingPage';
 import AdminPage from './components/AdminPage';
+import PasswordSettings from './components/PasswordSettings';
 import { supabase } from './supabaseClient';
 import {
   createChatSession,
@@ -177,6 +178,7 @@ export default function App() {
   const [isCustomDomainOpen, setIsCustomDomainOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const [appTheme, setAppTheme] = useState(() => {
     const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
     return APP_THEMES.some((theme) => theme.id === savedTheme) ? savedTheme : 'midnight';
@@ -274,9 +276,11 @@ export default function App() {
       setAccessToken(data.session?.access_token || null);
       setAuthLoading(false);
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user || null);
       setAccessToken(session?.access_token || null);
+      if (event === 'PASSWORD_RECOVERY') setIsPasswordRecovery(true);
+      if (event === 'SIGNED_OUT') setIsPasswordRecovery(false);
       setAuthLoading(false);
     });
     return () => listener.subscription.unsubscribe();
@@ -1309,11 +1313,11 @@ export default function App() {
         onClose={() => setIsCustomDomainOpen(false)}
         onDomainCreated={handleDomainCreated}
       />
-      {isSettingsOpen && (
+      {(isSettingsOpen || isPasswordRecovery) && (
         <div
           className="settings-backdrop"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setIsSettingsOpen(false);
+            if (!isPasswordRecovery && event.target === event.currentTarget) setIsSettingsOpen(false);
           }}
         >
           <section
@@ -1324,18 +1328,32 @@ export default function App() {
           >
             <header className="settings-heading">
               <div>
-                <span className="settings-kicker">Preferences</span>
-                <h2 id="settings-title">Settings</h2>
+                <span className="settings-kicker">{isPasswordRecovery ? 'Account security' : 'Preferences'}</span>
+                <h2 id="settings-title">{isPasswordRecovery ? 'Reset password' : 'Settings'}</h2>
               </div>
-              <button
-                type="button"
-                className="settings-close"
-                onClick={() => setIsSettingsOpen(false)}
-                aria-label="Close settings"
-              >
-                <X size={18} />
-              </button>
+              {!isPasswordRecovery && (
+                <button
+                  type="button"
+                  className="settings-close"
+                  onClick={() => setIsSettingsOpen(false)}
+                  aria-label="Close settings"
+                >
+                  <X size={18} />
+                </button>
+              )}
             </header>
+            {isPasswordRecovery ? (
+              <PasswordSettings
+                user={user}
+                recovery
+                onPasswordUpdated={() => {
+                  setIsPasswordRecovery(false);
+                  setIsSettingsOpen(false);
+                }}
+              />
+            ) : (
+            <>
+            <PasswordSettings user={user} />
             <div className="settings-section">
               <h3>Appearance</h3>
               <label className="settings-sidebar-width">
@@ -1474,6 +1492,8 @@ export default function App() {
                 />
               </div>
             </div>
+            </>
+            )}
           </section>
         </div>
       )}

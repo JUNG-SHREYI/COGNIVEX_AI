@@ -1133,6 +1133,98 @@ code, pre, .font-mono {
   line-height: 1.45;
 }
 
+.settings-success {
+  margin: 8px 2px 12px;
+  color: #bef264;
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.password-settings {
+  margin-bottom: 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.password-settings-description {
+  margin: 0 0 12px;
+  color: #94a3b8;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.password-settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.password-settings-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #cbd5e1;
+  font-size: 0.74rem;
+}
+
+.password-settings-form input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 11px;
+  color: #f8fafc;
+  background: rgba(2, 6, 23, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.password-settings-form input:focus {
+  border-color: rgba(163, 230, 53, 0.7);
+  outline: 2px solid rgba(163, 230, 53, 0.12);
+}
+
+.password-settings-form .auth-password-hint {
+  margin: 0;
+}
+
+.password-settings-submit,
+.password-reset-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.password-settings-submit {
+  color: #0f172a;
+  background: #bef264;
+  border: 0;
+}
+
+.password-settings-submit:disabled,
+.password-reset-link:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.password-reset-link {
+  margin-top: 8px;
+  color: #c4b5fd;
+  background: transparent;
+  border: 1px solid rgba(196, 181, 253, 0.25);
+}
+
+.password-reset-link:hover:not(:disabled) {
+  background: rgba(196, 181, 253, 0.08);
+}
+
 .sidebar-profile-wrap {
   position: relative;
   flex: 0 0 auto;
