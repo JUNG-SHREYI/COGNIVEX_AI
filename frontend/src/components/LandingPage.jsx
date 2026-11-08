@@ -69,6 +69,7 @@ export default function LandingPage({ onSignIn, onSignUp }) {
           <a href="#faq">FAQ</a>
         </nav>
         <div className="landing-header-actions">
+          <button className="landing-signin" type="button" onClick={onSignIn}>Sign in</button>
           <button className="landing-copy-email" type="button" onClick={handleCopyEmail}>
             {emailCopied ? <Check size={15} /> : <Copy size={15} />}
             {emailCopied ? 'Copied!' : 'Copy Email'}
@@ -82,15 +83,15 @@ export default function LandingPage({ onSignIn, onSignUp }) {
       <section className="landing-hero" id="home">
         <div className="landing-hero-glow" aria-hidden="true" />
         <div className="landing-hero-content">
-          <p className="landing-eyebrow"><span /> Bespoke AI Engineering &amp; Workflow Optimization</p>
+          <p className="landing-eyebrow"><span /> Gemini Chat · Causal Reasoning · DSA AI Tutor</p>
           <h1>
-            <span className="landing-heading-dark">Custom AI Tools &amp;<br />Workflow Systems</span>
-            <span className="landing-heading-gradient">Tailored to Your Exact Business<br className="landing-title-break" />Needs</span>
+            <span className="landing-heading-dark">Multi-Domain AI<br />Intelligence Platform</span>
+            <span className="landing-heading-gradient">Built for Real-World<br className="landing-title-break" />Decisions</span>
           </h1>
           <p className="landing-hero-description">
-            Cognivex AI unites Gemini-powered chat, causal reasoning, and a DSA AI Tutor<br className="landing-description-break" />
-            in one workspace, with focused intelligence for village, education, industry,<br className="landing-description-break" />
-            healthcare, and smart-city applications.
+            Bring Gemini-powered conversation, causal reasoning, saved chat history, and a dedicated DSA AI Tutor<br className="landing-description-break" />
+            into one workspace, with focused intelligence for village, college, industry, healthcare,<br className="landing-description-break" />
+            and smart-city applications.
           </p>
           <div className="landing-hero-actions">
             <a className="landing-signup" href={`mailto:${CONTACT_EMAIL}?subject=Book%20an%20AI%20consultation`}>
@@ -107,6 +108,9 @@ export default function LandingPage({ onSignIn, onSignUp }) {
               {emailCopied ? 'Copied!' : '(Click to copy)'}
             </button>
           </div>
+          <p className="landing-account-prompt">
+            New to Cognivex AI? <button type="button" onClick={onSignUp}>Create your account</button>
+          </p>
         </div>
       </section>
 

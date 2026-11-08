@@ -1356,6 +1356,27 @@ code, pre, .font-mono {
   cursor: pointer;
 }
 
+.landing-account-prompt {
+  margin: 12px auto 0;
+  color: #78839a;
+  font-size: 0.75rem;
+}
+
+.landing-account-prompt button {
+  padding: 0;
+  color: #5140cf;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.landing-account-prompt button:hover {
+  color: #3928a6;
+  text-decoration: underline;
+}
+
 .landing-signin {
   padding: 10px 0;
   background: transparent;
@@ -1424,7 +1445,7 @@ code, pre, .font-mono {
   align-items: center;
   justify-content: space-between;
   overflow: hidden;
-  padding: 38px 24px 40px;
+  padding: 38px 24px 6px;
   text-align: center;
 }
 
@@ -2424,6 +2445,7 @@ code, pre, .font-mono {
   .landing-hero-actions { flex-direction: column; }
   .landing-hero-actions > * { width: min(290px, 100%); }
   .landing-contact-pill { gap: 6px; padding-inline: 10px; font-size: 0.7rem; }
+  .landing-account-prompt { font-size: 0.72rem; }
   .landing-hero-actions .landing-signup,
   .landing-hero-actions .landing-secondary-action { width: min(290px, 100%); }
   .landing-title-break { display: none; }
