@@ -2,7 +2,11 @@
  * Cognivex AI Frontend REST Client
  */
 
-const API_BASE = 'http://127.0.0.1:8000/api';
+const configuredApiBase = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000')
+  .replace(/\/+$/, '');
+const API_BASE = configuredApiBase.endsWith('/api')
+  ? configuredApiBase
+  : `${configuredApiBase}/api`;
 
 function chatHeaders(accessToken, includeContentType = false) {
   const headers = {};

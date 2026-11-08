@@ -31,7 +31,7 @@ dsa-ai-tutor/ Standalone Gemini-powered Data Structures and Algorithms tutor
 
 ```powershell
 cd backend
-pip install fastapi uvicorn pydantic torch
+pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
 ```
 
 Create `backend/.env` locally. Never commit this file:
@@ -115,6 +115,33 @@ The frontend runs at the Vite URL shown in the terminal, usually `http://127.0.0
 Choose **DSA AI Tutor** above the chat composer to send DSA questions to Gemini.
 General chat also uses Gemini; keep `GEMINI_API_KEY` in `backend/.env`, never in
 frontend configuration.
+
+## Public Deployment
+
+The app is configured for a Vercel frontend and a Render FastAPI service. Both
+services are created from the GitHub repository; Render uses [render.yaml](render.yaml).
+
+1. In Render, create a Blueprint from this repository's `main` branch. Choose
+   the free plan and enter the requested `GEMINI_API_KEY` and
+   `SUPABASE_PUBLISHABLE_KEY` in Render's environment-variable prompts. Render
+   provides the API URL after deployment.
+2. In Vercel, import this repository and set the project root to `frontend`.
+   Set `VITE_API_BASE_URL` to the Render API origin (without `/api`),
+   `VITE_SUPABASE_URL` to the Supabase project URL, and
+   `VITE_SUPABASE_PUBLISHABLE_KEY` to the project's publishable key. These
+   frontend variables are public; never use a Supabase secret/service-role key.
+3. After Vercel provides the site URL, set Render's `CORS_ORIGINS` to that
+   origin only (for example, `https://your-app.vercel.app`) and redeploy the
+   API. Update Supabase Authentication's Site URL and redirect allowlist to
+   include the Vercel URL.
+4. Keep Gemini and any Supabase secret keys exclusively in the backend host's
+   environment variables. Do not commit them or enter them into frontend
+   settings.
+
+The free Render API can spin down while idle, and Supabase may pause a Free Plan
+project after 7 days of low activity. The first request after a Render spin-down
+may take longer; Supabase availability is managed separately from the browser.
+Upgrade either service if continuous availability is required.
 
 ## DSA AI Tutor
 
